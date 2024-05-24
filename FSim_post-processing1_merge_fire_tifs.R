@@ -1,13 +1,13 @@
-library(tidyverse)
-library(sf)
-library(sp)
-library(raster)
-library(terra)
-library(tidyterra)
-library(RSQLite)
+#library(tidyverse)
+#library(sf)
+#library(sp)
+#library(raster)
+#library(terra)
+#library(tidyterra)
+#library(RSQLite)
 
 #Set the working directory to the specific outputs folder for the run
-wd <- setwd("E:/Wildland_Fire_Smoke_Emissions_Tradeoff_Project/FSim_Outputs/baseline_t0/okwen_foa2c_r10/")
+wd <- setwd("/data001/projects/sindewal/okwen_foa2c_r10_tofu/")
 
 #######################################################################################
 # NOTE: To run this code, you need to make sure the following FSim outputs are in the #
@@ -18,10 +18,12 @@ wd <- setwd("E:/Wildland_Fire_Smoke_Emissions_Tradeoff_Project/FSim_Outputs/base
 #STEP 1: Record run information below 
 ###############################################
 foa_run <- "FOA2c_r10"
-#scenario <- "LF2020"
-run_timepoint <- "baseline_time0"
-foa_lcp <- raster("../../../Data/Landfire2022_LCGs/FOA2c_Landfire2022/FOA2c_LCG_LF2022_FBFM40_230_120m.tif")
-okwen_perimeter <- st_read("../../../Data/OkWen_shapefiles/FOA_shapefiles/OkWen_AllFOAs_60km_buffer/OkWen_cFOAs_Albers_60km_Buffer.shp")
+#Note: In some cases you may not have a scenario (assumed baseline). 
+# If this is the case, you'll need to comment out/edit lines 120-122 (comment out), 126-128 (edit), 209-210 (c.o.), and 212-214 (ed.).
+scenario <- "tofu"
+run_timepoint <- "bau_time1"
+foa_lcp <- raster("./_inputs/lcp/FOA2c_LCG_LF2023_FBFM40_240_120m.tif")
+okwen_perimeter <- st_read("../Data/OkWen_shapefiles/FOA_shapefiles/OkWen_AllFOAs_60km_buffer/OkWen_cFOAs_Albers_60km_Buffer.shp")
 foa_extent <- raster::extent(foa_lcp)
 okwen_extent <- raster::extent(okwen_perimeter)
 number_of_seasons <- 20000
@@ -66,7 +68,9 @@ for(j in 1:length(seasons_per_part)){
 # correct part label
 #Initialize an empty vector and add it as a column to the firelists dataframe
 Part <- vector("character",nrow(firelists))
+Scenario <- vector(rep(scenario, nrow(firelists)))
 firelists <- cbind(firelists,Part)
+firelists <- cbind(firelists,Scenario)
 #Sort the firelists dataframe by Season number
 firelists <- firelists[order(firelists$Season),]
 #For each fire in the firelists dataframe
@@ -114,11 +118,14 @@ for(each_season in unique(firelists$Season)){
   #Grab the part and make sure they are strings
   this_season_pt <- this_season_fires$Part
   this_season_pt <- as.character(this_season_pt)
+  #Grab the scenario and make sure they are strings
+  this_season_scen <- this_season_fires$Scenario
+  this_season_scen <- as.character(this_season_scen)
   #Make a vector with the foa_run label of the same length as the fire IDs and part
   this_season_foa_run <- rep(foa_run, length(this_season_fireIDs))
   #Make a vector of file names with which to search the list of all Flame Length tifs
   this_season_fires_filenames <- paste0(this_season_foa_run, "_",
-                                        this_season_pt, "_FlameLengths_FireID_",
+                                        this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
                                         this_season_fireIDs, ".tif")
   #Initialize a new empty list to hold the tifs
   this_season_fires_fl_db <- list()
@@ -200,9 +207,11 @@ for(each_season in unique(firelists$Season)){
   this_season_fireIDs <- as.character(this_season_fireIDs)
   this_season_pt <- this_season_fires$Part
   this_season_pt <- as.character(this_season_pt)
+  this_season_scen <- this_season_fires$Scenario
+  this_season_scen <- as.character(this_season_scen)
   this_season_foa_run <- rep(foa_run, length(this_season_fireIDs))
   this_season_fires_filenames <- paste0(this_season_foa_run, "_", this_season_pt, 
-                                        "_ArrivalDays_FireID_",
+                                         "_", this_season_scen, "_ArrivalDays_FireID_",
                                         this_season_fireIDs, ".tif")
   this_season_fires_ad_db <- list()
   for(each_fire in seq_along(this_season_fires_filenames)){
