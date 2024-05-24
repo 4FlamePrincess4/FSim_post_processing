@@ -1,10 +1,10 @@
-#library(tidyverse)
-#library(sf)
-#library(sp)
-#library(raster)
-#library(terra)
-#library(tidyterra)
-#library(RSQLite)
+library(tidyverse)
+library(sf)
+library(sp)
+library(raster)
+library(terra)
+library(tidyterra)
+library(RSQLite)
 
 #Set the working directory to the specific outputs folder for the run
 wd <- setwd("/data001/projects/sindewal/okwen_foa2c_r10_tofu/")
