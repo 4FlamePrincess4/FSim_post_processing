@@ -32,6 +32,8 @@ seasons_per_part <- c(rep(2500, number_of_parts))
 #Use the below alternative if you have different numbers of seasons for each part
 seasons_per_part <- c(5000, 7000, 2000, 1000, 5000)
 
+wd <- setwd("/data001/projects/sindewal/okwen_foa2c_r10_tofu/")
+
 #STEP 2: Combine fire lists from all four run parts
 ###############################################
 #Read in run fire lists
