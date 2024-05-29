@@ -157,11 +157,11 @@ for(each_season in unique(firelists$Season)){
     #Add the flame length rasters together to make one raster for each season
     this_season_fires_fl_raster <- do.call(raster::mosaic, this_season_fires_fl_db)
     #Plot the resulting raster
-    plot(this_season_fires_fl_raster) + title(paste0(each_season))
+    #plot(this_season_fires_fl_raster) + title(paste0(each_season))
   }else{
     #Plot the resulting raster
     this_season_fires_fl_raster <- this_season_fires_fl_db[[1]]
-    plot(this_season_fires_fl_raster) + title(paste0(each_season))
+    #plot(this_season_fires_fl_raster) + title(paste0(each_season))
   }
   #The rasters all have to be the same extent in order to stack properly
   this_season_fires_fl_raster <- raster::extend(this_season_fires_fl_raster, 
@@ -228,18 +228,18 @@ for(each_season in unique(firelists$Season)){
     this_season_fires_ad_db$fun <- sum
     this_season_fires_ad_db$na.rm <- TRUE
     this_season_fires_ad_raster <- do.call(raster::mosaic, this_season_fires_ad_db)
-    plot(this_season_fires_ad_raster)
+    #plot(this_season_fires_ad_raster)
     title(paste0(each_season))
   }else{
     this_season_fires_ad_raster <- this_season_fires_ad_db[[1]]
-    plot(this_season_fires_ad_raster)
+    #plot(this_season_fires_ad_raster)
     title(paste0(each_season))
   }
   this_season_fires_ad_raster <- raster::extend(this_season_fires_ad_raster,
                                                 foa_extent, value=NA)
   #this_season_fires_ad_raster <- raster::crop(this_season_fires_ad_raster,
                                             #  foa_extent)
-  plot(this_season_fires_ad_raster) + title(paste0(each_season))
+  #plot(this_season_fires_ad_raster) + title(paste0(each_season))
   if(exists("selected_seasons_ad_raster_stack")){
     selected_seasons_ad_raster_stack <- addLayer(selected_seasons_ad_raster_stack,
                                                  this_season_fires_ad_raster)
