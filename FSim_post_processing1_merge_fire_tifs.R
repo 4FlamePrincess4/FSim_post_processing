@@ -21,7 +21,7 @@ foa_run <- "FOA2c_r10"
 # If this is the case, you'll need to comment out/edit lines 120-122 (comment out), 126-128 (edit), 209-210 (c.o.), and 212-214 (ed.).
 scenario <- "tofu"
 run_timepoint <- "bau_time1"
-foa_lcp <- raster("./_inputs/lcp/FOA2c_LCG_LF2023_FBFM40_240_120m.tif")
+foa_lcp <- raster("/data001/projects/sindewal/okwen_foa2c_r10_tofu/_inputs/lcp/FOA2c_LCG_2023_FBFM40_240_120m.tif")
 #okwen_perimeter <- st_read("../Data/OkWen_shapefiles/FOA_shapefiles/OkWen_AllFOAs_60km_buffer/OkWen_cFOAs_Albers_60km_Buffer.shp")
 foa_extent <- raster::extent(foa_lcp)
 #okwen_extent <- raster::extent(okwen_perimeter)
