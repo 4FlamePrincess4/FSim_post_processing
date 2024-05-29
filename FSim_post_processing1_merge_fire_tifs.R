@@ -22,9 +22,9 @@ foa_run <- "FOA2c_r10"
 scenario <- "tofu"
 run_timepoint <- "bau_time1"
 foa_lcp <- raster("./_inputs/lcp/FOA2c_LCG_LF2023_FBFM40_240_120m.tif")
-okwen_perimeter <- st_read("../Data/OkWen_shapefiles/FOA_shapefiles/OkWen_AllFOAs_60km_buffer/OkWen_cFOAs_Albers_60km_Buffer.shp")
+#okwen_perimeter <- st_read("../Data/OkWen_shapefiles/FOA_shapefiles/OkWen_AllFOAs_60km_buffer/OkWen_cFOAs_Albers_60km_Buffer.shp")
 foa_extent <- raster::extent(foa_lcp)
-okwen_extent <- raster::extent(okwen_perimeter)
+#okwen_extent <- raster::extent(okwen_perimeter)
 number_of_seasons <- 20000
 #Use the below if you have an equal number of seasons for each part
 number_of_parts <- 8
@@ -165,9 +165,9 @@ for(each_season in unique(firelists$Season)){
   }
   #The rasters all have to be the same extent in order to stack properly
   this_season_fires_fl_raster <- raster::extend(this_season_fires_fl_raster, 
-                                                okwen_extent, value=NA)
-  this_season_fires_fl_raster <- raster::crop(this_season_fires_fl_raster, 
-                                              foa_extent)
+                                                foa_extent, value=NA)
+  #this_season_fires_fl_raster <- raster::crop(this_season_fires_fl_raster, 
+                                             # foa_extent)
   #Confirm the result if you want
   #plot(this_season_fires_fl_raster)
   #If you don't already have a raster stack, make it. Then add your raster layers.
@@ -236,9 +236,9 @@ for(each_season in unique(firelists$Season)){
     title(paste0(each_season))
   }
   this_season_fires_ad_raster <- raster::extend(this_season_fires_ad_raster,
-                                                okwen_extent, value=NA)
-  this_season_fires_ad_raster <- raster::crop(this_season_fires_ad_raster,
-                                              foa_extent)
+                                                foa_extent, value=NA)
+  #this_season_fires_ad_raster <- raster::crop(this_season_fires_ad_raster,
+                                            #  foa_extent)
   plot(this_season_fires_ad_raster) + title(paste0(each_season))
   if(exists("selected_seasons_ad_raster_stack")){
     selected_seasons_ad_raster_stack <- addLayer(selected_seasons_ad_raster_stack,
