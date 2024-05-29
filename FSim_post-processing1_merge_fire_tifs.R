@@ -36,7 +36,7 @@ seasons_per_part <- c(5000, 7000, 2000, 1000, 5000)
 ###############################################
 #Read in run fire lists
 firelist_files <- list.files(path=wd,
-                             recursive=T,
+                             recursive=F,
                              pattern=".+FireSizeList.csv$",
                              full.names=T)
 
