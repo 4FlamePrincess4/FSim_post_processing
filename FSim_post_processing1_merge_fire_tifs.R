@@ -88,6 +88,8 @@ for(fire_record in 1:nrow(firelists)){
   }
 }
 
+wd <- setwd("/data001/projects/sindewal/okwen_foa2c_r10_tofu/")
+
 #STEP 3: Read all flame length tifs, filter by each season, & export
 ########################################################################################################################
 # NOTE: Before you can run this code, you need to give the fire tif files unique names indicating their run and part.  #
@@ -189,6 +191,8 @@ for(season in seq_along(selected_seasons_fl_raster_stack)){
               paste0("./SeasonFires_FlameLength_tifs/Season", raster_labels[season],"_Fires_FlameLength.tif"), 
               format = "GTiff", overwrite=TRUE)
 }
+
+wd <- setwd("/data001/projects/sindewal/okwen_foa2c_r10_tofu/")
 
 #STEP 4: Select and combine the ArrivalDay tifs for selected years and fires
 ############################################################################
