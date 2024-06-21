@@ -354,7 +354,7 @@ for(each_season in unique(firelists$Season)){
       #### TODO: Handle the case with more than two overlapping fires (see v2 of this code). ####
       
     }else if(max_overlapping_fires > 1 && max_overlapping_fires <=2){ #End of if-else scenario where there are more than two overlapping fires somewhere on the landscape.
-      
+      print("There are no more than two fires overlapping at any given pixel on the landscape.")
       # There are only two overlapping fires in each case of overlap.
       #Print the overlapping fire IDs
       print(paste0("These are the cases: "))
