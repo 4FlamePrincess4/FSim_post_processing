@@ -1,0 +1,1 @@
+Get-ChildItem -Exclude {$_.Directory.Name + "_"} | rename-item -NewName { $_.Directory.Name + "_" + $_.Name }
