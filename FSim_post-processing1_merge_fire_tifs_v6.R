@@ -123,12 +123,16 @@ align_raster <- function(fire_raster, foa_lcp) {
   return(fire_raster)
 }
 #Create a function to set non-minimum cell values in a raster stack to NA
-set_nonmin_to_na <- function(r_stack) {
-  # Replace non-minimum values with NA
-  modified_stack <- app(r_stack, fun = function(x) {
-    min_vals <- min(x, na.rm = TRUE)
-    ifelse(x == min_vals, x, NA)
-  })
+set_nonmin_to_na <- function(r_stack, non_na_mask) {
+  # Replace non-minimum values with NA only where non_na_mask is TRUE
+  modified_stack <- app(r_stack, fun = function(x, mask) {
+    if (mask) {
+      min_vals <- min(x, na.rm = TRUE)
+      return(ifelse(x == min_vals, x, NA))
+    } else {
+      return(x)
+    }
+  }, non_na_mask)
   
   return(modified_stack)
 }
@@ -393,7 +397,9 @@ for(each_season in unique(firelists$Season)){
       #Now perform the minimum arrival day operation on the AD stack
       #Find the minimum of each cell across a stack of fire rasters and set all other values to NA.
       print(paste0("Setting non-minimum arrival days of overlapping fires to NA."))
-      earliest_arrival_AD_stack <- set_nonmin_to_na(overlapping_AD_stack)
+      # Create a mask for pixels with exactly 2 non-NA values to improve efficiency
+      non_na_mask <- num_non_na_per_pixel == 2
+      earliest_arrival_AD_stack <- set_nonmin_to_na(overlapping_AD_stack, non_na_mask)
       #Mask the FL rasters with the edited AD rasters to keep only FL values for the earliest arrival days.
       print(paste0("Masking the flame length rasters to set non-min arrival days of overlapping fires to NA."))
       overlapping_FL_stack <- align_raster(overlapping_FL_stack, earliest_arrival_AD_stack)
