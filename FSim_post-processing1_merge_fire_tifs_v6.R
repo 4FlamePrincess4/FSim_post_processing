@@ -554,8 +554,7 @@ for(each_season in unique(firelists$Season)){
           } #End of the if-else situation where the ignitions don't overlap with the polygons of overlapping fires.
         } #End of the for loop to edit each pair of fires that overlap.
       } else { #End of if-else scenario where there are only two overlapping fires in each case of overlap.
-        print("The polygons overlapped but the raster values do not overlap.
-              We will set non-min arrival day values to NA to be sure.")
+        print("The polygons overlapped but the raster values do not overlap. We will set non-min arrival day values to NA to be sure.")
         #Use the indices to subset the ArrivalDay and FlameLength stacks
         #We don't need the pairs of fires for this operation. The arrival day info will guide which values to keep.
         unique_overlapping_fire_indices <- c(overlapping_fire_indices_df$fire_index1, 
