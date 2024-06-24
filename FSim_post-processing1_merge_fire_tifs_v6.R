@@ -597,8 +597,8 @@ for(each_season in unique(firelists$Season)){
       #Delete the arrival day and flame length tifs of fires that shouldn't have happened
       if(length(fires_to_delete) > 0){
         fires_to_delete <- unlist(fires_to_delete)
-        earliest_arrival_AD_stack <- earliest_arrival_AD_stack[-fires_to_delete]
-        earliest_arrival_FL_stack <- earliest_arrival_FL_stack[-fires_to_delete]
+        this_season_AD_stack <- this_season_AD_stack[-fires_to_delete]
+        this_season_FL_stack <- this_season_FL_stack[-fires_to_delete]
       }
       
       #Create a raster that identifies each fire in each pixel
