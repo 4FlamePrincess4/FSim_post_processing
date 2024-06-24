@@ -5,8 +5,8 @@ library(tidyterra)
 library(RSQLite)
 
 #Set the working directory to the specific outputs folder for the run
-wd <- setwd("C:/Users/lsindewald/Documents/WFSETP/FSim_Outputs/OKWEN_FOA1c_r7_full_baseline_time0/")
-wd <- setwd("C:/Users/lsindewald/Documents/WFSETP/FSim_Outputs/OKWEN_FOA1c_r7_full_baseline_time0/")
+wd <- setwd("D:/WFSETP/FSim_Outputs/2022_baseline_t0/okwen_foa2c_r10/")
+wd <- setwd("D:/WFSETP/FSim_Outputs/2022_baseline_t0/okwen_foa2c_r10/")
 
 #Create directories to store the results
 dir.create("./SeasonFires_merged_tifs/")
@@ -31,11 +31,11 @@ dir.create("./SeasonFires_merged_tifs/")
 
 #STEP 1: Record run information below 
 ###############################################
-foa_run <- "FOA1c_r7"
+foa_run <- "FOA2c_r10"
 scenario <- ""
 run_timepoint <- "baseline_time0"
-foa_lcp <- rast("./_inputs/lcp/FOA1c_LCG_LF2022_FBFM40_230_120m.tif")
-#okwen_perimeter <- st_read("../../../Data/OkWen_shapefiles/FOA_shapefiles/OkWen_AllFOAs_60km_buffer/OkWen_cFOAs_Albers_60km_Buffer.shp")
+foa_lcp <- rast("../../../FSim_Run_Files/okwen_foa2c_r1/_inputs/lcp/FOA2c_LCG_LF2022_FBFM40_230_120m.tif")
+okwen_perimeter <- st_read("../../../Data/OkWen_shapefiles/FOA_shapefiles/OkWen_AllFOAs_60km_buffer/OkWen_cFOAs_Albers_60km_Buffer.shp")
 #foa_extent <- ext(foa_lcp)
 #okwen_extent <- ext(okwen_perimeter)
 number_of_seasons <- 20000
@@ -580,11 +580,12 @@ for(each_season in unique(firelists$Season)){
              main = paste0("Corrected flame length rasters for overlapping fires: ", overlapping_fire_ids))
       }
       #Overwrite the corresponding tifs in the season AD & FL stacks
-      for(i in seq_along(unique_overlapping_fire_indices)){
+     for(i in seq_along(unique_overlapping_fire_indices)){
         this_AD <- earliest_arrival_AD_stack[[i]]
         this_FL <- earliest_arrival_FL_stack[[i]]
         this_index <- unique_overlapping_fire_indices[i]
-        print(paste0("Replacing fire ", this_index, " in the original stack with the revised version."))
+        this_ID <- unique_overlapping_fire_ids[i]
+        print(paste0("Replacing fire ", this_ID, " in the original stack with the revised version."))
         this_season_AD_stack[[this_index]] <- this_AD
         rm(this_AD)
         this_season_FL_stack[[this_index]] <- this_FL
@@ -596,7 +597,7 @@ for(each_season in unique(firelists$Season)){
       #Delete the arrival day and flame length tifs of fires that shouldn't have happened
       if(length(fires_to_delete) > 0){
         fires_to_delete <- unlist(fires_to_delete)
-        earliest_arrival_fire_stack <- earliest_arrival_fire_stack[-fires_to_delete]
+        earliest_arrival_AD_stack <- earliest_arrival_AD_stack[-fires_to_delete]
         earliest_arrival_FL_stack <- earliest_arrival_FL_stack[-fires_to_delete]
       }
       
