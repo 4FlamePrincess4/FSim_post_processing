@@ -502,7 +502,7 @@ for(each_season in unique(firelists$Season)){
             second_fire_AD_value <- second_fire_AD_df[1,1]
             # Compare the start_day with the arrival_day_value
             if (!is.na(second_fire_AD_value)) {
-              if (first_fire_ig$start_day <= second_fire_AD_value) {
+              if (first_ig$start_day <= second_fire_AD_value) {
                 print("The ignition date for fire 1 is less than or equal to the arrival day value for fire 2 at the ignition point's location.")
                 print("We will keep both fires.")
               } else { #End of if-else scenario where the first fire ignition is within the second fire perim
