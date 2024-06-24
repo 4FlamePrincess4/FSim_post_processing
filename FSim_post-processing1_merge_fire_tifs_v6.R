@@ -5,8 +5,8 @@ library(tidyterra)
 library(RSQLite)
 
 #Set the working directory to the specific outputs folder for the run
-wd <- setwd("D:/WFSETP/FSim_Outputs/2022_baseline_t0/okwen_foa2c_r10/")
-wd <- setwd("D:/WFSETP/FSim_Outputs/2022_baseline_t0/okwen_foa2c_r10/")
+wd <- setwd("C:/Users/lsindewald/Documents/WFSETP/FSim_Outputs/OKWEN_FOA1c_r7_full_baseline_time0/")
+wd <- setwd("C:/Users/lsindewald/Documents/WFSETP/FSim_Outputs/OKWEN_FOA1c_r7_full_baseline_time0/")
 
 #Create directories to store the results
 dir.create("./SeasonFires_merged_tifs/")
@@ -31,11 +31,11 @@ dir.create("./SeasonFires_merged_tifs/")
 
 #STEP 1: Record run information below 
 ###############################################
-foa_run <- "FOA2c_r10"
+foa_run <- "FOA1c_r7"
 scenario <- ""
 run_timepoint <- "baseline_time0"
-foa_lcp <- rast("../../../FSim_Run_Files/okwen_foa2c_r1/_inputs/lcp/FOA2c_LCG_LF2022_FBFM40_230_120m.tif")
-okwen_perimeter <- st_read("../../../Data/OkWen_shapefiles/FOA_shapefiles/OkWen_AllFOAs_60km_buffer/OkWen_cFOAs_Albers_60km_Buffer.shp")
+foa_lcp <- rast("./_inputs/lcp/FOA1c_LCG_LF2022_FBFM40_230_120m.tif")
+#okwen_perimeter <- st_read("../../../Data/OkWen_shapefiles/FOA_shapefiles/OkWen_AllFOAs_60km_buffer/OkWen_cFOAs_Albers_60km_Buffer.shp")
 #foa_extent <- ext(foa_lcp)
 #okwen_extent <- ext(okwen_perimeter)
 number_of_seasons <- 20000
@@ -123,12 +123,16 @@ align_raster <- function(fire_raster, foa_lcp) {
   return(fire_raster)
 }
 #Create a function to set non-minimum cell values in a raster stack to NA
-set_nonmin_to_na <- function(r_stack) {
-  # Replace non-minimum values with NA
-  modified_stack <- app(r_stack, fun = function(x) {
-    min_vals <- min(x, na.rm = TRUE)
-    ifelse(x == min_vals, x, NA)
-  })
+set_nonmin_to_na <- function(r_stack, non_na_mask) {
+  # Replace non-minimum values with NA only where non_na_mask is TRUE
+  modified_stack <- app(r_stack, fun = function(x, mask) {
+    if (mask) {
+      min_vals <- min(x, na.rm = TRUE)
+      return(ifelse(x == min_vals, x, NA))
+    } else {
+      return(x)
+    }
+  }, non_na_mask)
   
   return(modified_stack)
 }
@@ -164,12 +168,12 @@ multiply_with_na <- function(x, y) {
   ifel(is.na(x), NA, x * ifel(is.na(y), 0, y))
 }
 #Create a function to merge a multi-layer spat raster and to keep the first non-NA value in the list, or return an NA if there are no non-NA values.
-merge_non_na_first <- function(...) {
+merge_non_na_first <- function(...){
   vals <- c(...)
   non_na_vals <- vals[!is.na(vals)]
-  if (length(non_na_vals) > 0) {
+  if(length(non_na_vals) > 0){
     return(non_na_vals[1])
-  } else {
+  }else{
     return(NA)
   }
 }
@@ -230,339 +234,11 @@ for(each_season in unique(firelists$Season)){
   #plot(this_season_FL_stack)
   #print(this_season_FL_stack)
   
-  #STEP 5: Load the fire perimeters for the season and check whether any overlap.
-  ###############################################
-  #Load the perimeter database corresponding to the season's part
-  con <- dbConnect(SQLite(), dbname = paste0(wd,"/",foa_run, "_",
-                                             this_season_pt[1], "_Perimeters.sqlite"))
-  # Construct the SQL query to select the polygons based on the IDs
-  query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
-  # Query the sqlite database to fetch only the perimeters that are in each id list
-  season_fire_perims <- dbGetQuery(con, query1)
-  #Get the reference system (which is the same for all three)
-  ref_sys <- dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
-  # Close the database connection
-  dbDisconnect(con)
-  # Convert the geometry column to sf objects
-  season_fire_perims$GEOMETRY <- sf::st_as_sfc(structure(as.list(season_fire_perims$GEOMETRY),class="blob"),
-                                             crs = ref_sys$srtext)
-  season_fire_perims <- st_as_sf(season_fire_perims)
-  # Plot the perimeters
-  plot(season_fire_perims, col = "black", max.plot = 1)
-  
-  #Check whether any of the perimeters overlap
-  overlap_matrix <- st_intersects(season_fire_perims, sparse = FALSE)
-  #Identify perimeters that overlap with any other perimeters
-  overlap_indices <- list()
-  n <- nrow(overlap_matrix)
-  for (i in 1:(n-1)) {
-    for (j in (i+1):n) {
-      if (overlap_matrix[i, j] && i != j) {
-        overlap_indices <- append(overlap_indices, list(c(i, j)))
-      }
-    }
-  }
- 
-  
-  #Print how many fires overlap in the season.
-  print(paste0("There are ",length(overlap_indices), " cases where fires overlap in season ", each_season, "."))
-  
-  #STEP 6: If there is no overlap, merge the fire tifs and write to the folders.
-  ###############################################
-  #If no fires overlap
-  if(length(overlap_indices) == 0){
+  #Check whether there is more than a single fire in the season.
+  # If there's only one, export the tifs. If there's more than one, proceed with step 5.
+  if(length(this_season_FL_filenames) <= 1){
+    print(paste0("There is only one fire in season ", each_season))
     #First, create a raster that identifies each fire in each pixel
-    # Create a copy of the raster stack to store the fire ID values
-    this_season_ID_stack <- rast(nrows = nrow(this_season_AD_stack), 
-                                    ncols = ncol(this_season_AD_stack), 
-                                    ext = ext(this_season_AD_stack), 
-                                    crs = crs(this_season_AD_stack), 
-                                    vals = NA)
-    this_season_fireIDs <- as.numeric(this_season_fireIDs)
-    print("Creating the fire ID raster...")
-    for(fireid in 1:nlyr(this_season_AD_stack)){
-      this_fireid <- this_season_fireIDs[fireid]
-      this_AD_raster <- this_season_AD_stack[[fireid]]
-      # Replace non-NA values with the fire ID directly in the final raster 
-      #  with a mask to avoid memory issues.
-      mask <- !is.na(this_AD_raster)
-      this_season_ID_stack[mask] <- this_fireid
-    }
-    print("Merging the AD and FL rasters...")
-    #Merge the ArrivalDay raster stack
-    season_fires_AD_raster <- app(this_season_AD_stack, fun = merge_non_na_first)
-    #Merge the FlameLength raster stack
-    season_fires_FL_raster <- app(this_season_FL_stack, fun = merge_non_na_first)
-    
-    #Create a stack of the three rasters
-    season_fires_raster_stack <- c(this_season_ID_stack, season_fires_AD_raster, 
-                                   season_fires_FL_raster)
-    names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
-    
-    #Plot to check the stack merged correctly
-    plot(season_fires_raster_stack, main = paste0("Season ", each_season))
-    
-    
-    #Write the merged season arrival day raster
-    writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season",
-                                                        each_season,"_merged_IDs_ADs_FLs.tif"),
-                overwrite = TRUE)
-
-  }else{ #End of if-else scenario where the fire perimeters do not overlap.
-    
-    #STEP 7: If there is overlap, use the extent of the merged perimeters to clip the tifs,
-    # then keep only the minimum arrival day values. Use these to filter the flame length tifs.
-    ###############################################
-    #First, we need to identify the fires that overlap
-    # Iterate over overlap_indices to extract fire IDs
-    overlapping_fire_ids <- list()
-    for (pair in overlap_indices) {
-      fire_id1 <- season_fire_perims$fire_id[pair[1]]
-      fire_id2 <- season_fire_perims$fire_id[pair[2]]
-      # Store fire IDs in the list
-      overlapping_fire_ids <- append(overlapping_fire_ids, list(data.frame(fire_id1 = fire_id1, fire_id2 = fire_id2)))
-    }
-    # Combine the list of data frames into a single data frame
-    overlapping_fire_ids_df <- do.call(rbind, overlapping_fire_ids)
-    overlapping_fire_indices_df <- do.call(rbind, overlap_indices)
-    overlapping_fire_indices_df <- as.data.frame(overlapping_fire_indices_df)
-    colnames(overlapping_fire_indices_df) <- c("fire_index1", "fire_index2")
-    
-    #Next, we need to check whether there are any cases where more than two fires overlap 
-    # at a location on a pixel-by-pixel basis
-    # Compute the number of non-NA values per pixel
-    print("Checking the number of non-NA values (# of fires) per pixel...")
-    num_non_na_per_pixel <- app(this_season_AD_stack, fun=count_non_na)
-    max_overlapping_fires <- global(num_non_na_per_pixel, max, na.rm=TRUE)[[1]]
-    if(max_overlapping_fires > 2){
-      print("There are more than two overlapping fires at a single pixel.")
-      # More than two overlapping fires at this pixel
-      cells_over_two_overlap <- which(values(num_non_na_per_pixel) > 2)
-      excess_overlap_fires <- c()
-      for(i in seq_along(cells_over_two_overlap)){
-        # Extract arrival days for all fires at the pixel where the excess overlap occurs
-        arrival_days_df <- extract(this_season_AD_stack, i)
-        # Convert the data frame to a vector
-        arrival_days_vector <- as.vector(t(arrival_days_df[1,]))
-        # Find the indices of non-NA values
-        non_na_indices <- which(!is.na(arrival_days_vector))
-        excess_overlap_fireids <- overlapping_fire_ids[non_na_indices]
-        excess_overlap_fires <- c(excess_overlap_fires, excess_overlap_fireids)
-      }
-      excess_fires <- unique(excess_overlap_fires)
-      print(paste0("These are the excess fires: ", excess_fires, ". Consider revising the code to deal with this case."))
-      
-      #### TODO: Handle the case with more than two overlapping fires (see v2 of this code). ####
-      
-    }else if(max_overlapping_fires > 1 && max_overlapping_fires <=2){ #End of if-else scenario where there are more than two overlapping fires somewhere on the landscape.
-      print("There are no more than two fires overlapping at any given pixel on the landscape.")
-      # There are only two overlapping fires in each case of overlap.
-      #Print the overlapping fire IDs
-      print(paste0("These are the cases: "))
-      print(overlapping_fire_ids_df)
-      
-      #Read in ignitions for the overlapping fire ids
-      #We only need the unique ids for this
-      unique_overlapping_fire_ids <- c(overlapping_fire_ids_df$fire_id1, 
-                                       overlapping_fire_ids_df$fire_id2)
-      unique_overlapping_fire_ids <- unique(unique_overlapping_fire_ids)
-      # Load the ignition database corresponding to the season part
-      con <- dbConnect(SQLite(), dbname = paste0(wd,"/",foa_run, "_",
-                                                 this_season_pt[1], "_Ignitions.sqlite"))
-      # Construct the SQL query to select the ignitions based on the IDs
-      query <- paste("SELECT * FROM ignitions WHERE fire_id IN (", 
-                     toString(unique_overlapping_fire_ids),")")
-      # Query the sqlite database to fetch only the ignitions that are in the overlapping id list
-      overlapping_ig <- dbGetQuery(con, query)
-      #Get the reference system (which is the same for all three)
-      ref_sys <- dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
-      # Close the database connection
-      dbDisconnect(con)
-      # Convert the geometry column to sf objects
-      colnames(overlapping_ig)[colnames(overlapping_ig) == "ignition_x"]<- "lon"
-      colnames(overlapping_ig)[colnames(overlapping_ig) == "ignition_y"]<- "lat"
-      overlapping_ig <- terra::vect(x = overlapping_ig, crs=ref_sys$srtext)
-      overlapping_ig <- as_sf(overlapping_ig)
-      
-      #Use the indices to subset the ArrivalDay and FlameLength stacks
-      #We don't need the pairs of fires for this operation. The arrival day info will guide which values to keep.
-      unique_overlapping_fire_indices <- c(overlapping_fire_indices_df$fire_index1, 
-                                           overlapping_fire_indices_df$fire_index2)
-      unique_overlapping_fire_indices <- unique(unique_overlapping_fire_indices)
-      overlapping_AD_stack <- this_season_AD_stack[[unique_overlapping_fire_indices]]
-      overlapping_FL_stack <- this_season_FL_stack[[unique_overlapping_fire_indices]]
-      #Now perform the minimum arrival day operation on the AD stack
-      #Find the minimum of each cell across a stack of fire rasters and set all other values to NA.
-      print(paste0("Setting non-minimum arrival days of overlapping fires to NA."))
-      #earliest_arrival_AD_stack <- set_nonmin_to_na(overlapping_AD_stack)
-      #Let's try a different approach to see if it's faster
-      # Create a mask for pixels with exactly 2 non-NA values
-      non_na_mask <- (num_non_na_per_pixel == 2)
-            # Identify minimum values in the stack
-      min_vals_stack <- app(this_season_AD_stack, fun = function(x) {
-        min_val <- min(x, na.rm = TRUE)
-        return(ifelse(x == min_val, x, NA))
-      })
-            # Apply the non_na_mask to keep only the relevant pixels
-      earliest_arrival_AD_stack <- mask(min_vals_stack, non_na_mask, maskvalues = FALSE)
-      
-      #Mask the FL rasters with the edited AD rasters to keep only FL values for the earliest arrival days.
-      print(paste0("Masking the flame length rasters to set non-min arrival days of overlapping fires to NA."))
-      overlapping_FL_stack <- align_raster(overlapping_FL_stack, earliest_arrival_AD_stack)
-      earliest_arrival_FL_stack <- mask(overlapping_FL_stack, earliest_arrival_AD_stack)
-      plot(earliest_arrival_FL_stack, 
-           main = paste0("Corrected flame length rasters for overlapping fires: ", overlapping_fire_ids))
-      
-      
-      #STEP 8: Now that we've deleted overburn on a pixel-by-pixel basis using the arrival day information,
-      # we still need to delete any fires that should not have ignited within the burn scar of previous fires
-      # We will also plot any cases of overlapping fires in order to devise code to handle any weird cases that arise.
-      ###############################################
-      
-      #First, check for cases where the ignitions fall into the corresponding polygons.
-      # Iterate over each pair of overlapping fires.
-      for(pairs in 1:nrow(overlapping_fire_ids_df)){
-        # Grab each ID
-        first_ID <- overlapping_fire_ids_df$fire_id1[pairs]
-        second_ID <- overlapping_fire_ids_df$fire_id2[pairs]
-        # Grab each index
-        first_index <- overlapping_fire_indices_df$fire_index1[pairs]
-        second_index <- overlapping_fire_indices_df$fire_index2[pairs]
-        # Subset the season polygons and the overlapping fire ignitions with these IDs
-        first_ig <- overlapping_ig %>%
-          dplyr::filter(fire_id == first_ID)
-        second_ig <- overlapping_ig %>%
-          dplyr::filter(fire_id == second_ID)
-        first_perim <- season_fire_perims %>%
-          dplyr::filter(fire_id == first_ID)
-        second_perim <- season_fire_perims %>%
-          dplyr::filter(fire_id == second_ID)
-        # Plot these as a sanity check
-        overlap_case_plot <- ggplot()+
-          geom_sf(data=first_perim, aes(color = "Fire 1 Perim"))+
-          geom_sf(data=first_ig, aes(color = "Fire 1 Ig"))+
-          geom_sf(data=second_perim, aes(color = "Fire 2 Perim"))+
-          geom_sf(data=second_ig, aes(color = "Fire 2 Ig"))+
-          scale_color_manual(values=c("Fire 1 Perim" = "black","Fire 1 Ig" = "red",
-                                      "Fire 2 Perim" = "blue","Fire 2 Ig" = "green"))+
-          theme_minimal()
-        print(overlap_case_plot)
-        
-    # Check whether the first ignition falls in the second perimeter
-    first_ignition_in_second_perim <- st_intersects(first_ig, second_perim, sparse = FALSE)
-    # Check whether the second ignition falls in the first perimeter
-    second_ignition_in_first_perim <- st_intersects(second_ig, first_perim, sparse = FALSE)
-    #If the first ignition is inside the second perimeter
-    if(first_ignition_in_second_perim){
-      #Check whether the ignition day is earlier than the arrival day at the pixel of the perimeter
-      # Extract the coordinates of the ignition point
-      first_ig_coords <- st_coordinates(first_ig)
-      # Extract the arrival day value at the ignition point location
-      second_fire_AD <- this_season_AD_stack[[second_index]]
-      second_fire_AD_df <- extract(second_fire_AD, matrix(first_ig_coords, ncol=2))
-      # Extract the value itself from the resulting dataframe
-      second_fire_AD_value <- second_fire_AD_df[1,1]
-      # Compare the start_day with the arrival_day_value
-      if (!is.na(second_fire_AD_value)) {
-        if (first_fire_ig$start_day <= second_fire_AD_value) {
-          print("The ignition date for fire 1 is less than or equal to the arrival day value for fire 2 at the ignition point's location.")
-          print("We will keep both fires.")
-          } else { #End of if-else scenario where the first fire ignition is within the second fire perim
-              # & the first fire would have prevented the second fire from spreading. #End of if-else scenario where the ignition date of fire 1 is less than or equal to the AD of fire 2.
-            print("The ignition date for fire 1 is greater than the arrival day value for fire 2 at the ignition point's location.")
-            print("Fire 1 should not have occurred and will be deleted.")
-            #Store the ID in a list to delete the FL and AD rasters from the stacks just before merging.
-            # Wait to do this to avoid messing up the stack indexing.
-            fires_to_delete <- append(fires_to_delete, first_index)
-          } #End of if-else scenario where the ignition for fire 1 is inside of the fire 2 perimeter and
-          # fire 1 should not have ignited.
-          } else { #End of scenario where the second fire AD value is not NA.
-            print("No valid arrival_day value at the ignition point's location.")
-            print(paste0("Ignition fire ID = ", first_ID, ". Perimeter fire ID = ", second_ID, "."))
-          } #End of scenario where the second fire AD value is NA.
-      } else if(second_ignition_in_first_perim){ #End of if-else scenario where the first fire ignition is inside of the second fire perimeter.
-        #Check whether the ignition day is earlier than the arrival day at the pixel of the perimeter
-        # Extract the coordinates of the ignition point
-        second_ig_coords <- st_coordinates(second_ig)
-        # Extract the arrival day value at the ignition point location
-        first_fire_AD <- this_season_AD_stack[[first_index]]
-        first_fire_AD_df <- extract(first_fire_AD, matrix(second_ig_coords, ncol=2))
-        # Extract the value itself from the resulting dataframe
-        first_fire_AD_value <- first_fire_AD_df[1,1]
-        # Compare the start_day with the arrival_day_value
-        if (!is.na(first_fire_AD_value)) {
-          if (second_ig$start_day <= first_fire_AD_value) {
-            print("The ignition date for fire 2 is less than or equal to the arrival day value for fire 1 at the ignition point's location.")
-            print("We will keep both fires.")
-            } else { #End of if-else scenario where the fire 2 ignition is within the fire 1 perim
-              # & fire 2 would have prevented fire 1 from spreading.
-            #End of if-else scenario where the fire 2 ignition is earlier than the fire 1 AD value.
-            print("The ignition date for fire 2 is greater than the arrival day value for fire 1 at the ignition point's location.")
-            print("Fire 2 should not have occurred and will be deleted.")
-            #Store the ID in a list to delete the FL and AD rasters from the stacks just before merging.
-            # Wait to do this to avoid messing up the stack indexing.
-            fires_to_delete <- append(fires_to_delete, second_index)
-            } #End of if-else scenario where the ignition for fire 1 is inside of the fire 2 perimeter and the
-            # ignition date is later than the fire 2 arrival day, so fire 1 would not have occurred.
-          } else {#End of scenario where the AD value at the ignition point is not NA.
-            print("No valid arrival_day value at the ignition point's location.")
-            print(paste0("Ignition fire ID = ", second_ID, ". Perimeter fire ID = ", first_ID, "."))
-            } #End of if-else scenario where the AD value at the ignition point is NA.
-        } else if(!(first_ignition_in_second_perim) && !(second_ignition_in_first_perim)){ #End of scenario where fire 2 ignition is inside of fire 1 perimeter.
-          #If the ignitions don't fall into the other polygons,
-          # subtract the polygon of the ignition point of fire 1 from the polygon of the later fire (fire 2)
-          print("The ignitions don't fall into the perimeters of the overlapping fires.")
-          print("We are assuming that keeping only the earliest arrival day value will take care of overburn.")
-          } #End of the if-else situation where the ignitions don't overlap with the polygons of overlapping fires.
-        } #End of the for loop to edit each pair of fires that overlap.
-      } else { #End of if-else scenario where there are only two overlapping fires in each case of overlap.
-        print("The polygons overlapped but the raster values do not overlap. We will set non-min arrival day values to NA to be sure.")
-        #Use the indices to subset the ArrivalDay and FlameLength stacks
-        #We don't need the pairs of fires for this operation. The arrival day info will guide which values to keep.
-        unique_overlapping_fire_indices <- c(overlapping_fire_indices_df$fire_index1,
-                                             overlapping_fire_indices_df$fire_index2)
-        unique_overlapping_fire_indices <- unique(unique_overlapping_fire_indices)
-        overlapping_AD_stack <- this_season_AD_stack[[unique_overlapping_fire_indices]]
-        overlapping_FL_stack <- this_season_AD_stack[[unique_overlapping_fire_indices]]
-        #Mask any non-minimum values with NA
-        # Create a mask for pixels with exactly 2 non-NA values
-        non_na_mask <- (num_non_na_per_pixel == 2)
-        # Identify minimum values in the stack
-        min_vals_stack <- app(this_season_AD_stack, fun = function(x) {
-          min_val <- min(x, na.rm = TRUE)
-          return(ifelse(x == min_val, x, NA))
-        })
-        # Apply the non_na_mask to keep only the relevant pixels
-        earliest_arrival_AD_stack <- mask(min_vals_stack, non_na_mask, maskvalues = FALSE)
-        #Mask the FL rasters with the edited AD rasters to keep only FL values for the earliest arrival days.
-        print(paste0("Masking the flame length rasters to set non-min arrival days of overlapping fires to NA."))
-        overlapping_FL_stack <- align_raster(overlapping_FL_stack, earliest_arrival_AD_stack)
-        earliest_arrival_AD_stack <- mask(overlapping_FL_stack, earliest_arrival_AD_stack)
-        plot(earliest_arrival_FL_stack,
-             main = paste0("Corrected flame length rasters for overlapping fires: ", overlapping_fire_ids))
-      }
-    #Overwrite the corresponding tifs in the season AD & FL stacks
-    for(i in seq_along(unique_overlapping_fire_indices)){
-      this_AD <- earliest_arrival_AD_stack[[i]]
-      this_FL <- earliest_arrival_FL_stack[[i]]
-      this_index <- unique_overlapping_fire_indices[i]
-      print(paste0("Replacing fire ", this_index, " in the original stack with the revised version."))
-      this_season_AD_stack[[this_index]] <- this_AD
-      rm(this_AD)
-      this_season_FL_stack[[this_index]] <- this_FL
-      # Remove temporary objects and run garbage collection
-      rm(this_FL)
-      gc()
-    } #End of for loop to replace AD & FL rasters with edited AD & FL rasters
-    
-    #Delete the arrival day and flame length tifs of fires that shouldn't have happened
-     if(length(fires_to_delete) > 0){
-       fires_to_delete <- unlist(fires_to_delete)
-       earliest_arrival_fire_stack <- earliest_arrival_fire_stack[-fires_to_delete]
-       earliest_arrival_FL_stack <- earliest_arrival_FL_stack[-fires_to_delete]
-     }
-
-    #Create a raster that identifies each fire in each pixel
     # Create a copy of the raster stack to store the fire ID values
     this_season_ID_stack <- rast(nrows = nrow(this_season_AD_stack), 
                                  ncols = ncol(this_season_AD_stack), 
@@ -579,11 +255,6 @@ for(each_season in unique(firelists$Season)){
       mask <- !is.na(this_AD_raster)
       this_season_ID_stack[mask] <- this_fireid
     }
-    print("Merging the AD and FL rasters...")
-    #Merge the ArrivalDay raster stack
-    season_fires_AD_raster <- app(this_season_AD_stack, fun = merge_non_na_first)
-    #Merge the FlameLength raster stack
-    season_fires_FL_raster <- app(this_season_FL_stack, fun = merge_non_na_first)
     
     #Create a stack of the three rasters
     season_fires_raster_stack <- c(this_season_ID_stack, season_fires_AD_raster, 
@@ -598,5 +269,374 @@ for(each_season in unique(firelists$Season)){
     writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season",
                                                            each_season,"_merged_IDs_ADs_FLs.tif"),
                 overwrite = TRUE)
-  } #End of the if-else scenario where fires overlap.
+  } else { #End of scenario where there is only one fire in the season.
+    #STEP 5: Load the fire perimeters for the season and check whether any overlap.
+    ###############################################
+    #Load the perimeter database corresponding to the season's part
+    con <- dbConnect(SQLite(), dbname = paste0(wd,"/",foa_run, "_",
+                                               this_season_pt[1], "_Perimeters.sqlite"))
+    # Construct the SQL query to select the polygons based on the IDs
+    query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
+    # Query the sqlite database to fetch only the perimeters that are in each id list
+    season_fire_perims <- dbGetQuery(con, query1)
+    #Get the reference system (which is the same for all three)
+    ref_sys <- dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
+    # Close the database connection
+    dbDisconnect(con)
+    # Convert the geometry column to sf objects
+    season_fire_perims$GEOMETRY <- sf::st_as_sfc(structure(as.list(season_fire_perims$GEOMETRY),class="blob"),
+                                                 crs = ref_sys$srtext)
+    season_fire_perims <- st_as_sf(season_fire_perims)
+    # Plot the perimeters
+    plot(season_fire_perims, col = "black", max.plot = 1)
+    
+    #Check whether any of the perimeters overlap
+    overlap_matrix <- st_intersects(season_fire_perims, sparse = FALSE)
+    #Identify perimeters that overlap with any other perimeters
+    overlap_indices <- list()
+    n <- nrow(overlap_matrix)
+    for (i in 1:(n-1)) {
+      for (j in (i+1):n) {
+        if (overlap_matrix[i, j] && i != j) {
+          overlap_indices <- append(overlap_indices, list(c(i, j)))
+        }
+      }
+    }
+    
+    
+    #Print how many fires overlap in the season.
+    print(paste0("There are ",length(overlap_indices), " cases where fires overlap in season ", each_season, "."))
+    
+    #STEP 6: If there is no overlap, merge the fire tifs and write to the folders.
+    ###############################################
+    #If no fires overlap
+    if(length(overlap_indices) == 0){
+      #First, create a raster that identifies each fire in each pixel
+      # Create a copy of the raster stack to store the fire ID values
+      this_season_ID_stack <- rast(nrows = nrow(this_season_AD_stack), 
+                                   ncols = ncol(this_season_AD_stack), 
+                                   ext = ext(this_season_AD_stack), 
+                                   crs = crs(this_season_AD_stack), 
+                                   vals = NA)
+      this_season_fireIDs <- as.numeric(this_season_fireIDs)
+      print("Creating the fire ID raster...")
+      for(fireid in 1:nlyr(this_season_AD_stack)){
+        this_fireid <- this_season_fireIDs[fireid]
+        this_AD_raster <- this_season_AD_stack[[fireid]]
+        # Replace non-NA values with the fire ID directly in the final raster 
+        #  with a mask to avoid memory issues.
+        mask <- !is.na(this_AD_raster)
+        this_season_ID_stack[mask] <- this_fireid
+      }
+      print("Merging the AD and FL rasters...")
+      #Merge the ArrivalDay raster stack
+      season_fires_AD_raster <- app(this_season_AD_stack, fun = merge_non_na_first)
+      #Merge the FlameLength raster stack
+      season_fires_FL_raster <- app(this_season_FL_stack, fun = merge_non_na_first)
+      
+      #Create a stack of the three rasters
+      season_fires_raster_stack <- c(this_season_ID_stack, season_fires_AD_raster, 
+                                     season_fires_FL_raster)
+      names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
+      
+      #Plot to check the stack merged correctly
+      plot(season_fires_raster_stack, main = paste0("Season ", each_season))
+      
+      
+      #Write the merged season arrival day raster
+      writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season",
+                                                             each_season,"_merged_IDs_ADs_FLs.tif"),
+                  overwrite = TRUE)
+      
+    }else{ #End of if-else scenario where the fire perimeters do not overlap.
+      
+      #STEP 7: If there is overlap, use the extent of the merged perimeters to clip the tifs,
+      # then keep only the minimum arrival day values. Use these to filter the flame length tifs.
+      ###############################################
+      #First, we need to identify the fires that overlap
+      # Iterate over overlap_indices to extract fire IDs
+      overlapping_fire_ids <- list()
+      for (pair in overlap_indices) {
+        fire_id1 <- season_fire_perims$fire_id[pair[1]]
+        fire_id2 <- season_fire_perims$fire_id[pair[2]]
+        # Store fire IDs in the list
+        overlapping_fire_ids <- append(overlapping_fire_ids, list(data.frame(fire_id1 = fire_id1, fire_id2 = fire_id2)))
+      }
+      # Combine the list of data frames into a single data frame
+      overlapping_fire_ids_df <- do.call(rbind, overlapping_fire_ids)
+      overlapping_fire_indices_df <- do.call(rbind, overlap_indices)
+      overlapping_fire_indices_df <- as.data.frame(overlapping_fire_indices_df)
+      colnames(overlapping_fire_indices_df) <- c("fire_index1", "fire_index2")
+      
+      #Next, we need to check whether there are any cases where more than two fires overlap 
+      # at a location on a pixel-by-pixel basis
+      # Compute the number of non-NA values per pixel
+      print("Checking the number of non-NA values (# of fires) per pixel...")
+      num_non_na_per_pixel <- app(this_season_AD_stack, fun=count_non_na)
+      max_overlapping_fires <- global(num_non_na_per_pixel, max, na.rm=TRUE)[[1]]
+      if(max_overlapping_fires > 2){
+        print("There are more than two overlapping fires at a single pixel.")
+        # More than two overlapping fires at this pixel
+        cells_over_two_overlap <- which(values(num_non_na_per_pixel) > 2)
+        excess_overlap_fires <- c()
+        for(i in seq_along(cells_over_two_overlap)){
+          # Extract arrival days for all fires at the pixel where the excess overlap occurs
+          arrival_days_df <- extract(this_season_AD_stack, i)
+          # Convert the data frame to a vector
+          arrival_days_vector <- as.vector(t(arrival_days_df[1,]))
+          # Find the indices of non-NA values
+          non_na_indices <- which(!is.na(arrival_days_vector))
+          excess_overlap_fireids <- overlapping_fire_ids[non_na_indices]
+          excess_overlap_fires <- c(excess_overlap_fires, excess_overlap_fireids)
+        }
+        excess_fires <- unique(excess_overlap_fires)
+        print(paste0("These are the excess fires: ", excess_fires, ". Consider revising the code to deal with this case."))
+        
+        #### TODO: Handle the case with more than two overlapping fires (see v2 of this code). ####
+        
+      }else if(max_overlapping_fires > 1 && max_overlapping_fires <=2){ #End of if-else scenario where there are more than two overlapping fires somewhere on the landscape.
+        print("There are no more than two fires overlapping at any given pixel on the landscape.")
+        # There are only two overlapping fires in each case of overlap.
+        #Print the overlapping fire IDs
+        print(paste0("These are the cases: "))
+        print(overlapping_fire_ids_df)
+        
+        #Read in ignitions for the overlapping fire ids
+        #We only need the unique ids for this
+        unique_overlapping_fire_ids <- c(overlapping_fire_ids_df$fire_id1, 
+                                         overlapping_fire_ids_df$fire_id2)
+        unique_overlapping_fire_ids <- unique(unique_overlapping_fire_ids)
+        # Load the ignition database corresponding to the season part
+        con <- dbConnect(SQLite(), dbname = paste0(wd,"/",foa_run, "_",
+                                                   this_season_pt[1], "_Ignitions.sqlite"))
+        # Construct the SQL query to select the ignitions based on the IDs
+        query <- paste("SELECT * FROM ignitions WHERE fire_id IN (", 
+                       toString(unique_overlapping_fire_ids),")")
+        # Query the sqlite database to fetch only the ignitions that are in the overlapping id list
+        overlapping_ig <- dbGetQuery(con, query)
+        #Get the reference system (which is the same for all three)
+        ref_sys <- dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
+        # Close the database connection
+        dbDisconnect(con)
+        # Convert the geometry column to sf objects
+        colnames(overlapping_ig)[colnames(overlapping_ig) == "ignition_x"]<- "lon"
+        colnames(overlapping_ig)[colnames(overlapping_ig) == "ignition_y"]<- "lat"
+        overlapping_ig <- terra::vect(x = overlapping_ig, crs=ref_sys$srtext)
+        overlapping_ig <- as_sf(overlapping_ig)
+        
+        #Use the indices to subset the ArrivalDay and FlameLength stacks
+        #We don't need the pairs of fires for this operation. The arrival day info will guide which values to keep.
+        unique_overlapping_fire_indices <- c(overlapping_fire_indices_df$fire_index1, 
+                                             overlapping_fire_indices_df$fire_index2)
+        unique_overlapping_fire_indices <- unique(unique_overlapping_fire_indices)
+        overlapping_AD_stack <- this_season_AD_stack[[unique_overlapping_fire_indices]]
+        overlapping_FL_stack <- this_season_FL_stack[[unique_overlapping_fire_indices]]
+        #Now perform the minimum arrival day operation on the AD stack
+        #Find the minimum of each cell across a stack of fire rasters and set all other values to NA.
+        print(paste0("Setting non-minimum arrival days of overlapping fires to NA."))
+        # Create a mask for pixels with exactly 2 non-NA values to improve efficiency
+        non_na_mask <- num_non_na_per_pixel == 2
+        #earliest_arrival_AD_stack <- set_nonmin_to_na(overlapping_AD_stack, non_na_mask)
+        #The terra app functiond can't accept a SpatRaster as a second argument, so let's try a different approach.
+        # Identify minimum values in the stack
+        min_vals_stack <- app(this_season_AD_stack, fun = function(x){
+          min_val <- min(x, na.rm = TRUE)
+          return(ifelse(x == min_val, x, NA))
+        })
+        earliest_arrival_AD_stack <- mask(min_vals_stack, non_na_mask, maskvalues = FALSE)
+        #Mask the FL rasters with the edited AD rasters to keep only FL values for the earliest arrival days.
+        print(paste0("Masking the flame length rasters to set non-min arrival days of overlapping fires to NA."))
+        overlapping_FL_stack <- align_raster(overlapping_FL_stack, earliest_arrival_AD_stack)
+        earliest_arrival_FL_stack <- mask(overlapping_FL_stack, earliest_arrival_AD_stack)
+        plot(earliest_arrival_FL_stack, 
+             main = paste0("Corrected flame length rasters for overlapping fires: ", overlapping_fire_ids))
+        
+        
+        #STEP 8: Now that we've deleted overburn on a pixel-by-pixel basis using the arrival day information,
+        # we still need to delete any fires that should not have ignited within the burn scar of previous fires
+        # We will also plot any cases of overlapping fires in order to devise code to handle any weird cases that arise.
+        ###############################################
+        
+        #First, check for cases where the ignitions fall into the corresponding polygons.
+        # Iterate over each pair of overlapping fires.
+        for(pairs in 1:nrow(overlapping_fire_ids_df)){
+          # Grab each ID
+          first_ID <- overlapping_fire_ids_df$fire_id1[pairs]
+          second_ID <- overlapping_fire_ids_df$fire_id2[pairs]
+          # Grab each index
+          first_index <- overlapping_fire_indices_df$fire_index1[pairs]
+          second_index <- overlapping_fire_indices_df$fire_index2[pairs]
+          # Subset the season polygons and the overlapping fire ignitions with these IDs
+          first_ig <- overlapping_ig %>%
+            dplyr::filter(fire_id == first_ID)
+          second_ig <- overlapping_ig %>%
+            dplyr::filter(fire_id == second_ID)
+          first_perim <- season_fire_perims %>%
+            dplyr::filter(fire_id == first_ID)
+          second_perim <- season_fire_perims %>%
+            dplyr::filter(fire_id == second_ID)
+          # Plot these as a sanity check
+          overlap_case_plot <- ggplot()+
+            geom_sf(data=first_perim, aes(color = "Fire 1 Perim"))+
+            geom_sf(data=first_ig, aes(color = "Fire 1 Ig"))+
+            geom_sf(data=second_perim, aes(color = "Fire 2 Perim"))+
+            geom_sf(data=second_ig, aes(color = "Fire 2 Ig"))+
+            scale_color_manual(values=c("Fire 1 Perim" = "black","Fire 1 Ig" = "red",
+                                        "Fire 2 Perim" = "blue","Fire 2 Ig" = "green"))+
+            theme_minimal()
+          print(overlap_case_plot)
+          
+          # Check whether the first ignition falls in the second perimeter
+          first_ignition_in_second_perim <- st_intersects(first_ig, second_perim, sparse = FALSE)
+          # Check whether the second ignition falls in the first perimeter
+          second_ignition_in_first_perim <- st_intersects(second_ig, first_perim, sparse = FALSE)
+          #If the first ignition is inside the second perimeter
+          if(first_ignition_in_second_perim){
+            #Check whether the ignition day is earlier than the arrival day at the pixel of the perimeter
+            # Extract the coordinates of the ignition point
+            first_ig_coords <- st_coordinates(first_ig)
+            # Extract the arrival day value at the ignition point location
+            second_fire_AD <- this_season_AD_stack[[second_index]]
+            second_fire_AD_df <- extract(second_fire_AD, matrix(first_ig_coords, ncol=2))
+            # Extract the value itself from the resulting dataframe
+            second_fire_AD_value <- second_fire_AD_df[1,1]
+            # Compare the start_day with the arrival_day_value
+            if (!is.na(second_fire_AD_value)) {
+              if (first_fire_ig$start_day <= second_fire_AD_value) {
+                print("The ignition date for fire 1 is less than or equal to the arrival day value for fire 2 at the ignition point's location.")
+                print("We will keep both fires.")
+              } else { #End of if-else scenario where the first fire ignition is within the second fire perim
+                # & the first fire would have prevented the second fire from spreading. #End of if-else scenario where the ignition date of fire 1 is less than or equal to the AD of fire 2.
+                print("The ignition date for fire 1 is greater than the arrival day value for fire 2 at the ignition point's location.")
+                print("Fire 1 should not have occurred and will be deleted.")
+                #Store the ID in a list to delete the FL and AD rasters from the stacks just before merging.
+                # Wait to do this to avoid messing up the stack indexing.
+                fires_to_delete <- append(fires_to_delete, first_index)
+              } #End of if-else scenario where the ignition for fire 1 is inside of the fire 2 perimeter and
+              # fire 1 should not have ignited.
+            } else { #End of scenario where the second fire AD value is not NA.
+              print("No valid arrival_day value at the ignition point's location.")
+              print(paste0("Ignition fire ID = ", first_ID, ". Perimeter fire ID = ", second_ID, "."))
+            } #End of scenario where the second fire AD value is NA.
+          } else if(second_ignition_in_first_perim){ #End of if-else scenario where the first fire ignition is inside of the second fire perimeter.
+            #Check whether the ignition day is earlier than the arrival day at the pixel of the perimeter
+            # Extract the coordinates of the ignition point
+            second_ig_coords <- st_coordinates(second_ig)
+            # Extract the arrival day value at the ignition point location
+            first_fire_AD <- this_season_AD_stack[[first_index]]
+            first_fire_AD_df <- extract(first_fire_AD, matrix(second_ig_coords, ncol=2))
+            # Extract the value itself from the resulting dataframe
+            first_fire_AD_value <- first_fire_AD_df[1,1]
+            # Compare the start_day with the arrival_day_value
+            if (!is.na(first_fire_AD_value)) {
+              if (second_ig$start_day <= first_fire_AD_value) {
+                print("The ignition date for fire 2 is less than or equal to the arrival day value for fire 1 at the ignition point's location.")
+                print("We will keep both fires.")
+              } else { #End of if-else scenario where the fire 2 ignition is within the fire 1 perim
+                # & fire 2 would have prevented fire 1 from spreading.
+                #End of if-else scenario where the fire 2 ignition is earlier than the fire 1 AD value.
+                print("The ignition date for fire 2 is greater than the arrival day value for fire 1 at the ignition point's location.")
+                print("Fire 2 should not have occurred and will be deleted.")
+                #Store the ID in a list to delete the FL and AD rasters from the stacks just before merging.
+                # Wait to do this to avoid messing up the stack indexing.
+                fires_to_delete <- append(fires_to_delete, second_index)
+              } #End of if-else scenario where the ignition for fire 1 is inside of the fire 2 perimeter and the
+              # ignition date is later than the fire 2 arrival day, so fire 1 would not have occurred.
+            } else {#End of scenario where the AD value at the ignition point is not NA.
+              print("No valid arrival_day value at the ignition point's location.")
+              print(paste0("Ignition fire ID = ", second_ID, ". Perimeter fire ID = ", first_ID, "."))
+            } #End of if-else scenario where the AD value at the ignition point is NA.
+          } else if(!(first_ignition_in_second_perim) && !(second_ignition_in_first_perim)){ #End of scenario where fire 2 ignition is inside of fire 1 perimeter.
+            #If the ignitions don't fall into the other polygons,
+            # subtract the polygon of the ignition point of fire 1 from the polygon of the later fire (fire 2)
+            print("The ignitions don't fall into the perimeters of the overlapping fires.")
+            print("We are assuming that keeping only the earliest arrival day value will take care of overburn.")
+          } #End of the if-else situation where the ignitions don't overlap with the polygons of overlapping fires.
+        } #End of the for loop to edit each pair of fires that overlap.
+      } else { #End of if-else scenario where there are only two overlapping fires in each case of overlap.
+        print("The polygons overlapped but the raster values do not overlap.
+              We will set non-min arrival day values to NA to be sure.")
+        #Use the indices to subset the ArrivalDay and FlameLength stacks
+        #We don't need the pairs of fires for this operation. The arrival day info will guide which values to keep.
+        unique_overlapping_fire_indices <- c(overlapping_fire_indices_df$fire_index1, 
+                                             overlapping_fire_indices_df$fire_index2)
+        unique_overlapping_fire_indices <- unique(unique_overlapping_fire_indices)
+        overlapping_AD_stack <- this_season_AD_stack[[unique_overlapping_fire_indices]]
+        overlapping_FL_stack <- this_season_FL_stack[[unique_overlapping_fire_indices]]
+        # Create a mask for pixels with exactly 2 non-NA values to improve efficiency
+        non_na_mask <- num_non_na_per_pixel == 2
+        #earliest_arrival_AD_stack <- set_nonmin_to_na(overlapping_AD_stack, non_na_mask)
+        #The terra app functiond can't accept a SpatRaster as a second argument, so let's try a different approach.
+        # Identify minimum values in the stack
+        min_vals_stack <- app(this_season_AD_stack, fun = function(x){
+          min_val <- min(x, na.rm = TRUE)
+          return(ifelse(x == min_val, x, NA))
+        })
+        earliest_arrival_AD_stack <- mask(min_vals_stack, non_na_mask, maskvalues = FALSE)
+        #Mask the FL rasters with the edited AD rasters to keep only FL values for the earliest arrival days.
+        print(paste0("Masking the flame length rasters to set non-min arrival days of overlapping fires to NA."))
+        overlapping_FL_stack <- align_raster(overlapping_FL_stack, earliest_arrival_AD_stack)
+        earliest_arrival_FL_stack <- mask(overlapping_FL_stack, earliest_arrival_AD_stack)
+        plot(earliest_arrival_FL_stack, 
+             main = paste0("Corrected flame length rasters for overlapping fires: ", overlapping_fire_ids))
+      }
+      #Overwrite the corresponding tifs in the season AD & FL stacks
+      for(i in seq_along(unique_overlapping_fire_indices)){
+        this_AD <- earliest_arrival_AD_stack[[i]]
+        this_FL <- earliest_arrival_FL_stack[[i]]
+        this_index <- unique_overlapping_fire_indices[i]
+        print(paste0("Replacing fire ", this_index, " in the original stack with the revised version."))
+        this_season_AD_stack[[this_index]] <- this_AD
+        rm(this_AD)
+        this_season_FL_stack[[this_index]] <- this_FL
+        # Remove temporary objects and run garbage collection
+        rm(this_FL)
+        gc()
+      } #End of for loop to replace AD & FL rasters with edited AD & FL rasters
+      
+      #Delete the arrival day and flame length tifs of fires that shouldn't have happened
+      if(length(fires_to_delete) > 0){
+        fires_to_delete <- unlist(fires_to_delete)
+        earliest_arrival_fire_stack <- earliest_arrival_fire_stack[-fires_to_delete]
+        earliest_arrival_FL_stack <- earliest_arrival_FL_stack[-fires_to_delete]
+      }
+      
+      #Create a raster that identifies each fire in each pixel
+      # Create a copy of the raster stack to store the fire ID values
+      this_season_ID_stack <- rast(nrows = nrow(this_season_AD_stack), 
+                                   ncols = ncol(this_season_AD_stack), 
+                                   ext = ext(this_season_AD_stack), 
+                                   crs = crs(this_season_AD_stack), 
+                                   vals = NA)
+      this_season_fireIDs <- as.numeric(this_season_fireIDs)
+      print("Creating the fire ID raster...")
+      for(fireid in 1:nlyr(this_season_AD_stack)){
+        this_fireid <- this_season_fireIDs[fireid]
+        this_AD_raster <- this_season_AD_stack[[fireid]]
+        # Replace non-NA values with the fire ID directly in the final raster 
+        #  with a mask to avoid memory issues.
+        mask <- !is.na(this_AD_raster)
+        this_season_ID_stack[mask] <- this_fireid
+      }
+      print("Merging the AD and FL rasters...")
+      #Merge the ArrivalDay raster stack
+      season_fires_AD_raster <- app(this_season_AD_stack, fun = merge_non_na_first)
+      #Merge the FlameLength raster stack
+      season_fires_FL_raster <- app(this_season_FL_stack, fun = merge_non_na_first)
+      
+      #Create a stack of the three rasters
+      season_fires_raster_stack <- c(this_season_ID_stack, season_fires_AD_raster, 
+                                     season_fires_FL_raster)
+      names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
+      
+      #Plot to check the stack merged correctly
+      plot(season_fires_raster_stack, main = paste0("Season ", each_season))
+      
+      
+      #Write the merged season arrival day raster
+      writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season",
+                                                             each_season,"_merged_IDs_ADs_FLs.tif"),
+                  overwrite = TRUE)
+    } #End of the if-else scenario where fires overlap.
+  } #End of scenario where there are at least two fires in the season.
 } #End of for loop to merge AD & FL tifs for each season.
