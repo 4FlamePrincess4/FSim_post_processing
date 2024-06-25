@@ -103,7 +103,7 @@ for(fire_record in 1:nrow(firelists)){
   }
 }
 
-#STEP 3: Define a set of functions to use for post-processing.
+#STEP 3: Define a set of helper functions 
 ###############################################
 
 #Create a function to read fire tif files, align them with the foa raster, and stack them
@@ -375,7 +375,7 @@ for(each_season in unique(firelists$Season)){
       num_non_na_per_pixel <- app(this_season_AD_stack, fun=count_non_na)
       max_overlapping_fires <- global(num_non_na_per_pixel, max, na.rm=TRUE)[[1]]
       if(max_overlapping_fires > 2){
-        print("There are more than two overlapping fires at a single pixel.")
+        print("There are up to ", max_overlapping_fires, " at a single pixel.")
         # More than two overlapping fires at this pixel
         cells_over_two_overlap <- which(values(num_non_na_per_pixel) > 2)
         excess_overlap_fires <- c()
@@ -386,13 +386,93 @@ for(each_season in unique(firelists$Season)){
           arrival_days_vector <- as.vector(t(arrival_days_df[1,]))
           # Find the indices of non-NA values
           non_na_indices <- which(!is.na(arrival_days_vector))
-          excess_overlap_fireids <- overlapping_fire_ids[non_na_indices]
+          excess_overlap_fireids <- this_season_fireIDs[non_na_indices]
           excess_overlap_fires <- c(excess_overlap_fires, excess_overlap_fireids)
         }
         excess_fires <- unique(excess_overlap_fires)
-        print(paste0("These are the excess fires: ", excess_fires, ". Consider revising the code to deal with this case."))
+        excess_fires_indices <- unique(non_na_indices)
+        print(paste0("These are the excess fires: ", excess_fires, "."))
         
-        #### TODO: Handle the case with more than two overlapping fires (see v2 of this code). ####
+        #Load the ignitions and perimeters
+        # Load the ignition database corresponding to the season part
+        con <- dbConnect(SQLite(), dbname = paste0(wd,"/",foa_run, "_",
+                                                   this_season_pt[1], "_Ignitions.sqlite"))
+        # Construct the SQL query to select the ignitions based on the IDs
+        query <- paste("SELECT * FROM ignitions WHERE fire_id IN (", 
+                       toString(excess_fires),")")
+        # Query the sqlite database to fetch only the ignitions that are in the overlapping id list
+        overlapping_ig <- dbGetQuery(con, query)
+        #Get the reference system (which is the same for all three)
+        ref_sys <- dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
+        # Close the database connection
+        dbDisconnect(con)
+        # Convert the geometry column to sf objects
+        colnames(overlapping_ig)[colnames(overlapping_ig) == "ignition_x"]<- "lon"
+        colnames(overlapping_ig)[colnames(overlapping_ig) == "ignition_y"]<- "lat"
+        overlapping_ig <- terra::vect(x = overlapping_ig, crs=ref_sys$srtext)
+        overlapping_ig <- as_sf(overlapping_ig)
+        
+        #Use the indices to subset the ArrivalDay and FlameLength stacks
+        overlapping_AD_stack <- this_season_AD_stack[[excess_fires_indices]]
+        overlapping_FL_stack <- this_season_FL_stack[[excess_fires_indices]]
+        #Now perform the minimum arrival day operation on the AD stack
+        #Find the minimum of each cell across a stack of fire rasters and set all other values to NA.
+        print(paste0("Setting non-minimum arrival days of overlapping fires to NA."))
+        # Create a mask for pixels with 2 or more non-NA values to improve efficiency
+        non_na_mask <- num_non_na_per_pixel >= 2
+        # Identify minimum values in the stack
+        min_vals_stack <- app(this_season_AD_stack, fun = function(x){
+          min_val <- min(x, na.rm = TRUE)
+          return(ifelse(x == min_val, x, NA))
+        })
+        earliest_arrival_AD_stack <- mask(min_vals_stack, non_na_mask, maskvalues = FALSE)
+        #Mask the FL rasters with the edited AD rasters to keep only FL values for the earliest arrival days.
+        print(paste0("Masking the flame length rasters to set non-min arrival days of overlapping fires to NA."))
+        overlapping_FL_stack <- align_raster(overlapping_FL_stack, earliest_arrival_AD_stack)
+        earliest_arrival_FL_stack <- mask(overlapping_FL_stack, earliest_arrival_AD_stack)
+        plot(earliest_arrival_FL_stack, 
+             main = paste0("Corrected flame length rasters for overlapping fires: ", overlapping_fire_ids))
+        
+        #Grab just the overlapping perimeters
+        overlapping_perims <- season_fire_perims[excess_fires]
+        #The non-minimum values have been set to NA for more than three fires, but we still need to deal 
+        # with cases where the ignitions of fires 
+        for (i in seq_along(overlapping_perims)) {
+          # Get the current perimeter and raster
+          perimeter <- overlapping_perims[i]
+          arrival_raster <- earliest_arrival_AD_stack[[i]]
+          
+          # Find ignition points within this perimeter
+          points_in_perimeter <- terra::intersect(overlapping_ig, perimeter)
+          
+          # If there are no points in the perimeter, skip to the next iteration
+          if (nrow(points_in_perimeter) == 0) next
+          
+          # Loop through the points within the perimeter
+          for (j in 1:nrow(points_in_perimeter)) {
+            # Get the ignition point and its start day
+            ignition_point <- points_in_perimeter[j, ]
+            start_day <- ignition_point$start_day
+            ignition_id <- ignition_point$fire_id
+            ignition_index <- which(this_season_fireIDs == ignition_id)
+            
+            # Extract the arrival day at the ignition point location
+            arrival_day <- terra::extract(arrival_raster, terra::geom(ignition_point))[[1]]
+            
+            # Compare start day with arrival day
+            if (start_day > arrival_day) {
+              fires_to_delete <- rbind(fires_to_delete, ignition_index)
+            }
+          }
+        }
+        #Plot to see what the cases look like
+        ggplot() +
+          geom_sf(data = overlapping_perims, aes(fill = fire_id), alpha = 0.5, color = "black") +
+          geom_sf_text(data = overlapping_perims, aes(label = fire_id), size = 5, color = "blue") +
+          geom_sf(data = overlapping_ig, aes(color = fire_id), size = 3) +
+          geom_sf_text(data = overlapping_ig, aes(label = fire_id), nudge_y = 0.05, color = "red") +
+          theme_minimal() +
+          labs(title = "Fire Perimeters and Ignitions", fill = "Fire ID", color = "Ignition Fire ID")
         
       }else if(max_overlapping_fires > 1 && max_overlapping_fires <=2){ #End of if-else scenario where there are more than two overlapping fires somewhere on the landscape.
         print("There are no more than two fires overlapping at any given pixel on the landscape.")
@@ -580,7 +660,7 @@ for(each_season in unique(firelists$Season)){
              main = paste0("Corrected flame length rasters for overlapping fires: ", overlapping_fire_ids))
       }
       #Overwrite the corresponding tifs in the season AD & FL stacks
-     for(i in seq_along(unique_overlapping_fire_indices)){
+      for(i in seq_along(unique_overlapping_fire_indices)){
         this_AD <- earliest_arrival_AD_stack[[i]]
         this_FL <- earliest_arrival_FL_stack[[i]]
         this_index <- unique_overlapping_fire_indices[i]
