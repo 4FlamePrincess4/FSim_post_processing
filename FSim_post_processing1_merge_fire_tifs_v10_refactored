@@ -575,12 +575,24 @@ unique_seasons <- unique(firelists$Season)
 # Set up logger
 logger <- create.logger(logfile = "merge_log.txt", level = "INFO")
 
-#The multicore plan allows for forking processes, which is faster but unstable when run through RStudio. 
-# When using this plan, run the full script through the base R console. 
-# plan(multisession, workers = 7)
+#Use the below if you're on one of the Titan machines
+#Set up a cluster and using that with future_map()
+#cl <- parallel::makeCluster(32)
+#plan(cluster, workers = cl)
 
-#Let's try setting up a cluster and using that with future_map()
-cl <- parallel::makeCluster(32)
+#Use the below if you're on the Alderaan cluster
+# Get the SLURM node names
+node_names <- Sys.getenv("SLURM_JOB_NODELIST")
+# Ensure only the allocated nodes are used
+if (node_names != "") {
+  # Split the node names into a list
+  node_names <- unlist(strsplit(node_names, ","))
+  # Create a cluster using the allocated nodes
+  cl <- makeCluster(node_names)
+} else {
+  stop("No nodes allocated by SLURM.")
+}
+# Set up the future plan to use the cluster
 plan(cluster, workers = cl)
 
 # Increase serialization buffer size if needed
