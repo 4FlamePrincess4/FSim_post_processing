@@ -1,0 +1,559 @@
+library(tidyverse)
+library(sf)
+library(terra)
+library(tidyterra)
+library(RSQLite)
+library(future)
+library(furrr)
+library(log4r)
+library(parallel)
+
+#Set the working directory to the specific outputs folder for the run
+wd <- setwd("C:/FSimProjectFolder/FSim_Outputs/okwen_2022_baseline_foa3c_r3_time0/")
+wd <- setwd("C:/FSimProjectFolder/FSim_Outputs/okwen_2022_baseline_foa3c_r3_time0/")
+
+#Create directories to store the results
+dir.create("./SeasonFires_merged_tifs/")
+
+
+#######################################################################################
+# NOTE: To run this code, you need to make sure the following FSim outputs are in the #
+#       working directory: the FireSizeList.csv files, the  ArrivalDays tifs, and     #
+#        the FlameLengths tifs files. You also need to use the rename_tifs script to  #
+#       append the directory name (with the run & part info) to the beginning of the  #
+#       file names.                                                                   #
+#######################################################################################
+##                                CODE DESCRIPTION                                   ##
+# The plan is to use the fire perimeters to determine whether any fires overlap.      #
+# If they do not overlap, we will simply merge the tifs. If they do overlap, we will  #
+# store the fire IDs, use the IDs to fetch the correct tifs, merge the perimeters and #
+# save the merged extent, clip the tifs to the extent to save processing time, then   #
+# do the cell-by-cell minimum arrival day operation to save only the earliest arrival #
+# days. We can then resize the tifs back to the foa extent and add them back to the   #
+# tif stack in place of the previous version. Lastly, we'll use the perimeters and    #
+# ignition points to delete remaining overburn before moving on to the next season.   #
+####################################################################################### 
+
+#STEP 1: Record run information below 
+###############################################
+foa_run <- "FOA3c_r3"
+scenario <- ""
+run_timepoint <- "baseline_time0"
+foa_lcp <- rast("../../OKWEN_Data/FSim/Landfire2022_LCGs/FOA3c_Landfire2022/FOA3c_LCG_LF2022_FBFM40_230_CONUS.tif", lyrs = 1)
+saveRDS(foa_lcp, file = "foa_lcp.rds")
+okwen_perimeter <- st_read("../../OKWEN_Data/FOA_shapefiles/OkWen_AllFOAs_60km_buffer/OkWen_cFOAs_Albers_60km_Buffer.shp")
+#foa_extent <- ext(foa_lcp)
+#okwen_extent <- ext(okwen_perimeter)
+number_of_seasons <- 20000
+#Use the below if you have an equal number of seasons for each part
+number_of_parts <- 4
+seasons_per_part <- c(rep(5000, number_of_parts))
+#Use the below alternative if you have different numbers of seasons for each part
+seasons_per_part <- c(5000, 7000, 2000, 1000, 5000)
+
+#STEP 2: Combine fire lists from all four run parts
+###############################################
+#Read in run fire lists
+firelist_files <- list.files(path=wd,
+                             recursive=F,
+                             pattern=".+FireSizeList.csv$",
+                             full.names=T)
+firelist_tables <- lapply(firelist_files, read.csv, header=TRUE)
+#Combine the fire lists from all of the parts
+firelists <- do.call(rbind, firelist_tables)
+#Add a Season_FireID variable to distinguish fires with the same numbers but from different parts
+firelists <- firelists %>%
+  mutate(Season_FireID = paste0(Season,"_",FireID))
+
+### Solution to create part labels for parts of varying numbers of seasons: ###
+
+## First, make x number of vectors, where x is equal to the number of parts, 
+## with a unique sequence of numbers corresponding to the seasons for each part.
+
+#Grab the cumulative number of seasons per part
+cumsum_seasons <- cumsum(seasons_per_part)
+#remove the object "part_seasons" so that the ifelse statement in lines 56 through 61 works
+remove(part_seasons)
+part_seasons_list <- list()
+for(j in 1:length(seasons_per_part)){
+  if(exists("part_seasons")){
+    part_seasons <- c((1+max(part_seasons)):(cumsum_seasons[j]))
+    print(part_seasons)
+  }else{
+    part_seasons <- c(1:seasons_per_part[j])
+  }
+  part_seasons_li <- list(assign(paste0("pt",j,"_seasons_",min(part_seasons),"_",max(part_seasons)), part_seasons))
+  part_seasons_list <- append(part_seasons_list,part_seasons_li)
+}
+
+## Second, compare each fire's season to a list of seasons for each part and assign the 
+## correct part label.
+
+#Initialize an empty vector and add it as a column to the firelists dataframe
+Part <- vector("character",nrow(firelists))
+Scenario <- rep(scenario, nrow(firelists))
+firelists <- cbind(firelists,Part,Scenario)
+#Sort the firelists dataframe by Season number
+firelists <- firelists[order(firelists$Season),]
+#For each fire in the firelists dataframe
+for(fire_record in 1:nrow(firelists)){
+  #And for each part in the list of part vectors (with Season number sequences)
+  for(part_seasons_li in seq_along(part_seasons_list)){
+    #Make the list item a vector again
+    this_vec <- unlist(part_seasons_list[part_seasons_li])
+    #Compare each fire Season number to the vector of seasons corresponding to the part
+    # and, if the fire Season number is in the vector, add the part label to the Part column
+    if(firelists$Season[fire_record] %in% this_vec){
+      firelists$Part[fire_record] <- paste0(sprintf("pt%s",part_seasons_li))
+    }
+  }
+}
+
+#STEP 3: Define a set of helper functions 
+###############################################
+
+#Create a function to read fire tif files, align them with the foa raster, and stack them
+align_and_stack_tifs <- function(file, foa_lcp) {
+  fire_raster <- terra::rast(file)
+  foa_lcp <- terra::unwrap(foa_lcp)
+  aligned_fire <- align_raster(fire_raster, foa_lcp)
+  return(aligned_fire)
+}
+#Create a function to align the individual fire tifs with the FOA lcp tif
+align_raster <- function(fire_raster, foa_lcp) {
+  foa_lcp <- terra::unwrap(foa_lcp)
+  # Define the projection of the fire raster to match the projection of the foa raster
+  terra::crs(fire_raster) <- terra::crs(foa_lcp)
+  # Project the fire raster to align with the foa raster
+  fire_raster <- terra::extend(fire_raster, terra::ext(foa_lcp), snap="near")
+  return(fire_raster)
+}
+
+#Create a function to count non-NA values that can be applied to each pixel in a raster stack
+count_non_na <- function(x){
+  num_non_na <- sum(!is.na(x))
+  return(num_non_na)
+}
+
+#Create a function to merge a multi-layer spat raster and to keep the first non-NA value in the list, or return an NA if there are no non-NA values.
+merge_non_na_first <- function(...){
+  vals <- c(...)
+  non_na_vals <- vals[!is.na(vals)]
+  if(length(non_na_vals) > 0){
+    return(non_na_vals[1])
+  }else{
+    return(NA)
+  }
+}
+#Create a function to find overlap indices
+find_overlap_indices <- function(overlap_matrix) {
+  overlap_indices <- list()
+  n <- nrow(overlap_matrix)
+  for (i in 1:(n-1)) {
+    for (j in (i+1):n) {
+      if (overlap_matrix[i, j] && i != j) {
+        overlap_indices <- append(overlap_indices, list(c(i, j)))
+      }
+    }
+  }
+  return(overlap_indices)
+}
+
+#STEP 4: Define smaller functions to be used within the larger process_fire_season function, which is then run with future_map()
+########################################################################################################################
+# NOTE: Before you can run this code, you need to give the fire tif files unique names indicating their run and part.  #
+#   To do this, run the PowerShell script "rename_tifs.ps1", which you can download from the FSim_scripts Google Drive #
+#   folder. You need to place the script in the folder, then you can right click and select the option to run the      #
+#   script in PowerShell. The script will be renamed as well, but this doesn't matter. I suggest copying the original  #
+#   to each folder and running the script before moving on to pasting into the next folder. The script is a small file.#
+########################################################################################################################
+
+#Define a function to process a single season
+process_single_fire_season <- function(each_season, this_season_fireIDs, this_season_AD_stack, this_season_FL_stack) {
+  #This function processes a season where there is only a single fire.
+  print(paste0("There is only one fire in season ", each_season))
+  #Create the fire ID raster stack
+  this_season_ID_stack <- terra::rast(nrows = nrow(this_season_AD_stack), ncols = ncol(this_season_AD_stack), ext = ext(this_season_AD_stack), crs = crs(this_season_AD_stack), vals = NA)
+  this_season_fireIDs <- as.numeric(this_season_fireIDs)
+  print("Creating the fire ID raster...")
+  for(fireid in 1:terra::nlyr(this_season_AD_stack)){
+    this_fireid <- this_season_fireIDs[fireid]
+    this_AD_raster <- this_season_AD_stack[[fireid]]
+    mask <- !is.na(this_AD_raster)
+    this_season_ID_stack[mask] <- this_fireid
+  }
+  #Combine the fire ID stack with the AD & FL stacks. (Each "stack" actually only has one layer because there is only one fire.)
+  season_fires_raster_stack <- c(this_season_ID_stack, this_season_AD_stack, this_season_FL_stack)
+  names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
+  #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
+  #Write the resulting 3-band raster stack.
+  terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
+}
+
+merge_and_write_rasters <- function(each_season, this_season_fireIDs, this_season_AD_stack, this_season_FL_stack) {
+  #First, make a fire ID stack to identify each pixel burned by a given fire.
+  this_season_ID_stack <- terra::rast(nrows = nrow(this_season_AD_stack), ncols = terra::ncol(this_season_AD_stack), ext = terra::ext(this_season_AD_stack), crs = terra::crs(this_season_AD_stack), vals = NA)
+  this_season_fireIDs <- as.numeric(this_season_fireIDs)
+  print("Creating the fire ID raster...")
+  for(fireid in 1:terra::nlyr(this_season_AD_stack)){
+    this_fireid <- this_season_fireIDs[fireid]
+    this_AD_raster <- this_season_AD_stack[[fireid]]
+    mask <- !is.na(this_AD_raster)
+    this_season_ID_stack[mask] <- this_fireid
+  }
+  #Next, merge the AD and FL rasters with the helper function merge_non_na_first
+  print("Merging the AD and FL rasters...")
+  season_fires_AD_raster <- terra::app(this_season_AD_stack, fun = merge_non_na_first)
+  print(season_fires_AD_raster)
+  season_fires_FL_raster <- terra::app(this_season_FL_stack, fun = merge_non_na_first)
+  print(season_fires_FL_raster)
+  #Create the 3-band season raster stack
+  season_fires_raster_stack <- c(this_season_ID_stack, season_fires_AD_raster, season_fires_FL_raster)
+  print(season_fires_raster_stack)
+  names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
+  print(season_fires_raster_stack)
+  #plot(season_fires_raster_stack, main = paste0("Season ", each_season, " fire IDs, ADs, & FLs"))
+  #Save the 3-band season raster stack
+  terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
+}
+
+process_overlaps <- function(each_season, this_season_fireIDs, this_season_pt, this_season_AD_stack, this_season_FL_stack, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel){
+  library(RSQLite)
+  fires_to_delete <- list()
+  #Read in ignitions for the overlapping fire ids
+  #We only need the unique ids for this
+  unique_overlapping_fire_ids <- c(overlapping_fire_ids_df$fire_id1, 
+                                   overlapping_fire_ids_df$fire_id2)
+  unique_overlapping_fire_ids <- unique(unique_overlapping_fire_ids)
+  # Load the ignition database corresponding to the season part
+  con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/",foa_run, "_",
+                                             this_season_pt[1], "_Ignitions.sqlite"))
+  # Construct the SQL query to select the ignitions based on the IDs
+  query <- paste("SELECT * FROM ignitions WHERE fire_id IN (", 
+                 toString(unique_overlapping_fire_ids),")")
+  # Query the sqlite database to fetch only the ignitions that are in the overlapping id list
+  overlapping_ig <- RSQLite::dbGetQuery(con, query)
+  #Get the reference system (which is the same for all three)
+  ref_sys <- RSQLite::dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
+  # Close the database connection
+  RSQLite::dbDisconnect(con)
+  # Convert the geometry column to sf objects
+  colnames(overlapping_ig)[colnames(overlapping_ig) == "ignition_x"]<- "lon"
+  colnames(overlapping_ig)[colnames(overlapping_ig) == "ignition_y"]<- "lat"
+  overlapping_ig <- terra::vect(x = overlapping_ig, crs=ref_sys$srtext)
+  overlapping_ig <- tidyterra::as_sf(overlapping_ig)
+  
+  #Use the indices to subset the ArrivalDay and FlameLength stacks
+  #We don't need the pairs of fires for this operation. The arrival day info will guide which values to keep.
+  unique_overlapping_fire_indices <- c(overlapping_fire_indices_df$fire_index1, 
+                                       overlapping_fire_indices_df$fire_index2)
+  unique_overlapping_fire_indices <- unique(unique_overlapping_fire_indices)
+  overlapping_AD_stack <- this_season_AD_stack[[unique_overlapping_fire_indices]]
+  overlapping_FL_stack <- this_season_FL_stack[[unique_overlapping_fire_indices]]
+  #Now perform the minimum arrival day operation on the AD stack
+  #Find the minimum of each cell across a stack of fire rasters and set all other values to NA.
+  print(paste0("Setting non-minimum arrival days of overlapping fires to NA."))
+  # Create a mask for pixels with exactly 2 non-NA values to improve efficiency
+  non_na_mask <- num_non_na_per_pixel == 2
+  # Identify minimum values in the stack
+  min_vals_stack <- terra::app(this_season_AD_stack, fun = function(x){
+    min_val <- min(x, na.rm = TRUE)
+    return(ifelse(x == min_val, x, NA))
+  })
+  earliest_arrival_AD_stack <- terra::mask(min_vals_stack, non_na_mask, maskvalues = FALSE)
+  #Mask the FL rasters with the edited AD rasters to keep only FL values for the earliest arrival days.
+  print(paste0("Masking the flame length rasters to set non-min arrival days of overlapping fires to NA."))
+  overlapping_FL_stack <- align_raster(overlapping_FL_stack, earliest_arrival_AD_stack)
+  earliest_arrival_FL_stack <- terra::mask(overlapping_FL_stack, earliest_arrival_AD_stack)
+  # plot(earliest_arrival_FL_stack, 
+  #      main = paste0("Corrected flame length rasters for overlapping fires: ", unique_overlapping_fire_ids))
+  #Check for cases where the ignitions fall into the corresponding polygons.
+  # Iterate over each pair of overlapping fires.
+  for(pairs in 1:nrow(overlapping_fire_ids_df)){
+    # Grab each ID
+    first_ID <- overlapping_fire_ids_df$fire_id1[pairs]
+    second_ID <- overlapping_fire_ids_df$fire_id2[pairs]
+    # Grab each index
+    first_index <- overlapping_fire_indices_df$fire_index1[pairs]
+    second_index <- overlapping_fire_indices_df$fire_index2[pairs]
+    # Subset the season polygons and the overlapping fire ignitions with these IDs
+    first_ig <- overlapping_ig %>%
+      dplyr::filter(fire_id == first_ID)
+    second_ig <- overlapping_ig %>%
+      dplyr::filter(fire_id == second_ID)
+    first_perim <- season_fire_perims %>%
+      dplyr::filter(fire_id == first_ID)
+    second_perim <- season_fire_perims %>%
+      dplyr::filter(fire_id == second_ID)
+    # # Plot these as a sanity check
+    # overlap_case_plot <- ggplot2::ggplot()+
+    #   ggplot2::geom_sf(data=first_perim, aes(color = "Fire 1 Perim"))+
+    #   ggplot2::geom_sf(data=first_ig, aes(color = "Fire 1 Ig"))+
+    #   ggplot2::geom_sf(data=second_perim, aes(color = "Fire 2 Perim"))+
+    #   ggplot2::geom_sf(data=second_ig, aes(color = "Fire 2 Ig"))+
+    #   ggplot2::scale_color_manual(values=c("Fire 1 Perim" = "black","Fire 1 Ig" = "red",
+    #                               "Fire 2 Perim" = "blue","Fire 2 Ig" = "green"))+
+    #   ggplot2::theme_minimal()
+    # print(overlap_case_plot)
+    
+    # Check whether the first ignition falls in the second perimeter
+    first_ignition_in_second_perim <- sf::st_intersects(first_ig, second_perim, sparse = FALSE)
+    print(first_ignition_in_second_perim)
+    # Check whether the second ignition falls in the first perimeter
+    second_ignition_in_first_perim <- sf::st_intersects(second_ig, first_perim, sparse = FALSE)
+    #If the first ignition is inside the second perimeter
+    if(first_ignition_in_second_perim){
+      #Check whether the ignition day is earlier than the arrival day at the pixel of the perimeter
+      # Extract the coordinates of the ignition point
+      first_ig_coords <- sf::st_coordinates(first_ig)
+      # Extract the arrival day value at the ignition point location
+      second_fire_AD <- this_season_AD_stack[[second_index]]
+      print(second_fire_AD)
+      second_fire_AD_df <- terra::extract(second_fire_AD, matrix(first_ig_coords, ncol=2))
+      # Extract the value itself from the resulting dataframe
+      second_fire_AD_value <- second_fire_AD_df[1,1]
+      # Compare the start_day with the arrival_day_value
+      if (!is.na(second_fire_AD_value)) {
+        if (first_ig$start_day <= second_fire_AD_value) {
+          print("The ignition date for fire 1 is less than or equal to the arrival day value for fire 2 at the ignition point's location.")
+          print("We will keep both fires.")
+        } else { #End of if-else scenario where the first fire ignition is within the second fire perim
+          # & the first fire would have prevented the second fire from spreading. #End of if-else scenario where the ignition date of fire 1 is less than or equal to the AD of fire 2.
+          print("The ignition date for fire 1 is greater than the arrival day value for fire 2 at the ignition point's location.")
+          print("Fire 1 should not have occurred and will be deleted.")
+          #Store the ID in a list to delete the FL and AD rasters from the stacks just before merging.
+          # Wait to do this to avoid messing up the stack indexing.
+          fires_to_delete <- append(fires_to_delete, first_index)
+        } #End of if-else scenario where the ignition for fire 1 is inside of the fire 2 perimeter and
+        # fire 1 should not have ignited.
+      } else { #End of scenario where the second fire AD value is not NA.
+        print("No valid arrival_day value at the ignition point's location.")
+        print(paste0("Ignition fire ID = ", first_ID, ". Perimeter fire ID = ", second_ID, "."))
+      } #End of scenario where the second fire AD value is NA.
+    } else if(second_ignition_in_first_perim){ #End of if-else scenario where the first fire ignition is inside of the second fire perimeter.
+      #Check whether the ignition day is earlier than the arrival day at the pixel of the perimeter
+      # Extract the coordinates of the ignition point
+      second_ig_coords <- sf::st_coordinates(second_ig)
+      # Extract the arrival day value at the ignition point location
+      first_fire_AD <- this_season_AD_stack[[first_index]]
+      first_fire_AD_df <- terra::extract(first_fire_AD, matrix(second_ig_coords, ncol=2))
+      # Extract the value itself from the resulting dataframe
+      first_fire_AD_value <- first_fire_AD_df[1,1]
+      # Compare the start_day with the arrival_day_value
+      if (!is.na(first_fire_AD_value)) {
+        if (second_ig$start_day <= first_fire_AD_value) {
+          print("The ignition date for fire 2 is less than or equal to the arrival day value for fire 1 at the ignition point's location.")
+          print("We will keep both fires.")
+        } else { #End of if-else scenario where the fire 2 ignition is within the fire 1 perim
+          # & fire 2 would have prevented fire 1 from spreading.
+          #End of if-else scenario where the fire 2 ignition is earlier than the fire 1 AD value.
+          print("The ignition date for fire 2 is greater than the arrival day value for fire 1 at the ignition point's location.")
+          print("Fire 2 should not have occurred and will be deleted.")
+          #Store the ID in a list to delete the FL and AD rasters from the stacks just before merging.
+          # Wait to do this to avoid messing up the stack indexing.
+          fires_to_delete <- append(fires_to_delete, second_index)
+        } #End of if-else scenario where the ignition for fire 1 is inside of the fire 2 perimeter and the
+        # ignition date is later than the fire 2 arrival day, so fire 1 would not have occurred.
+      } else {#End of scenario where the AD value at the ignition point is not NA.
+        print("No valid arrival_day value at the ignition point's location.")
+        print(paste0("Ignition fire ID = ", second_ID, ". Perimeter fire ID = ", first_ID, "."))
+      } #End of if-else scenario where the AD value at the ignition point is NA.
+    } else if(!(first_ignition_in_second_perim) && !(second_ignition_in_first_perim)){ #End of scenario where fire 2 ignition is inside of fire 1 perimeter.
+      #If the ignitions don't fall into the other polygons,
+      # subtract the polygon of the ignition point of fire 1 from the polygon of the later fire (fire 2)
+      print("The ignitions don't fall into the perimeters of the overlapping fires.")
+      print("We are assuming that keeping only the earliest arrival day value will take care of overburn.")
+    } #End of the if-else situation where the ignitions don't overlap with the polygons of overlapping fires.
+  } #End of the for loop to edit each pair of fires that overlap.
+  
+  #Overwrite the corresponding tifs in the season AD & FL stacks
+  for(i in seq_along(unique_overlapping_fire_indices)){
+    this_AD <- earliest_arrival_AD_stack[[i]]
+    this_FL <- earliest_arrival_FL_stack[[i]]
+    this_index <- unique_overlapping_fire_indices[i]
+    this_ID <- unique_overlapping_fire_ids[i]
+    print(paste0("Replacing fire ", this_ID, " in the original stack with the revised version."))
+    this_season_AD_stack[[this_index]] <- this_AD
+    rm(this_AD)
+    this_season_FL_stack[[this_index]] <- this_FL
+    # Remove temporary objects and run garbage collection
+    rm(this_FL)
+    gc()
+  }
+  #Delete the arrival day and flame length tifs of fires that shouldn't have happened
+  if(length(fires_to_delete) > 0){
+    fires_to_delete <- unlist(fires_to_delete)
+    this_season_AD_stack <- this_season_AD_stack[[-fires_to_delete]]
+    this_season_FL_stack <- this_season_FL_stack[[-fires_to_delete]]
+    this_season_fireIDs <- this_season_fireIDs[-fires_to_delete]
+  }
+  #Finally, export the resulting edited tifs in a 3-band season raster stack
+  merge_and_write_rasters(each_season, this_season_fireIDs, this_season_AD_stack, this_season_FL_stack)
+}
+
+
+handle_more_than_two_overlaps <- function(each_season, this_season_fireIDs, this_season_pt, this_season_AD_stack, this_season_FL_stack, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel) {
+  #This function processes cases where there are more than two overlapping fires at a single pixel.
+  print(paste("There are up to", max_overlapping_fires, "fires at a single pixel."))
+  #Find which cell indices have the excess overlap
+  cells_over_two_overlap <- which(values(num_non_na_per_pixel) > 2)
+  excess_overlap_fires <- c()
+  non_na_indices_list <- list()
+  #Get the fire IDs for the fires that overlap at these locations
+  for(i in seq_along(cells_over_two_overlap)){
+    # Extract arrival days for all fires at the pixel where the excess overlap occurs
+    arrival_days_df <- terra::extract(this_season_AD_stack, cells_over_two_overlap[i])
+    # Convert the data frame to a vector
+    arrival_days_vector <- as.vector(t(arrival_days_df[1,]))
+    # Find the indices of non-NA values
+    non_na_indices <- which(!is.na(arrival_days_vector))
+    excess_overlap_fireids <- this_season_fireIDs[non_na_indices]
+    excess_overlap_fires <- c(excess_overlap_fires, excess_overlap_fireids)
+    non_na_indices_list[[i]] <- non_na_indices
+  }
+  #Simplify to the unique IDs for these fires and report out
+  excess_fires <- unique(excess_overlap_fires)
+  print(paste("These are the excess fires:", paste(excess_fires, collapse = ", ")))
+  #Now process the overlapping fires
+  process_overlaps(each_season, this_season_fireIDs, this_season_pt, this_season_AD_stack, this_season_FL_stack, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel)
+}
+
+
+handle_two_or_fewer_overlaps <- function(each_season, this_season_fireIDs, this_season_pt, this_season_AD_stack, this_season_FL_stack, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel) {
+  #If there are only two overlaps
+  print("There are at most two fires overlapping at any given pixel.")
+  #Print the overlapping fire IDs
+  print(paste0("These are the cases: "))
+  print(overlapping_fire_ids_df)
+  #Now process the overlapping fires
+  process_overlaps(each_season, this_season_fireIDs, this_season_pt, this_season_AD_stack, this_season_FL_stack, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel)
+}
+
+process_overlapping_fires <- function(each_season, this_season_fireIDs, this_season_pt, this_season_AD_stack, this_season_FL_stack, season_fire_perims, ref_sys, overlap_indices) {
+  #Create a dataframe with overlapping fire IDs
+  overlapping_fire_ids_df <- do.call(rbind, lapply(overlap_indices, function(pair) {
+    data.frame(fire_id1 = season_fire_perims$fire_id[pair[1]], fire_id2 = season_fire_perims$fire_id[pair[2]])
+  }))
+  #Create a corresponding dataframe of overlapping fire indices
+  overlapping_fire_indices_df <- do.call(rbind, overlap_indices)
+  colnames(overlapping_fire_indices_df) <- c("fire_index1", "fire_index2")
+  overlapping_fire_indices_df <- as.data.frame(overlapping_fire_indices_df)
+  overlapping_fire_indices_df$fire_index1 <- as.numeric(overlapping_fire_indices_df$fire_index1)
+  overlapping_fire_indices_df$fire_index2 <- as.numeric(overlapping_fire_indices_df$fire_index2)
+  #Check how many non-na values there are per pixel to determine which overlap function to apply.
+  print("Checking the number of non-NA values (# of fires) per pixel...")
+  num_non_na_per_pixel <- terra::app(this_season_AD_stack, fun=count_non_na)
+  max_overlapping_fires <- terra::global(num_non_na_per_pixel, max, na.rm=TRUE)[[1]]
+  #If there are more than two overlapping fires, use the handle_more_than_two_overlaps function.
+  if(max_overlapping_fires > 2) {
+    handle_more_than_two_overlaps(each_season, this_season_fireIDs, this_season_pt, this_season_AD_stack, this_season_FL_stack, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel)
+  } else { #If there are only two fires at any given pixel, use the handle_two_or_fewer_overlaps function.
+    handle_two_or_fewer_overlaps(each_season, this_season_fireIDs, this_season_pt, this_season_AD_stack, this_season_FL_stack, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel)
+  }
+}
+
+process_fire_season <- function(each_season) {
+  library(RSQLite)
+  print(paste0("Processing Season ", each_season,"..."))
+  foa_lcp <- readRDS("foa_lcp.rds")
+  foa_lcp <- terra::unwrap(foa_lcp)
+  #Subset the firelists by the current season
+  this_season_fires <- firelists %>%
+    dplyr::filter(Season == each_season)
+  #Fetch vectors of other run information
+  this_season_fireIDs <- as.character(this_season_fires$FireID)
+  this_season_pt <- as.character(this_season_fires$Part)
+  this_season_scen <- as.character(this_season_fires$Scenario)
+  this_season_foa_run <- rep(foa_run, length(this_season_fireIDs))
+  #Use this info to read in the arrival day tif filenames for this season's fires
+  #De-comment the below when you have a scenario
+  # this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
+  #                                    this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_",
+  #                                    this_season_fireIDs, ".tif")
+  this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
+                                     this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
+                                     this_season_fireIDs, ".tif")
+  print(paste0("Reading in Arrival Day tifs for Season ", each_season,"..."))
+
+  
+  this_season_AD_stack <- terra::rast(lapply(this_season_AD_filenames, align_and_stack_tifs, foa_lcp = foa_lcp))
+  #Use this info to read in the flame length tif filenames for this season's fires
+  #De-comment the below when you have a scenario
+  # this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
+  #                                    this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
+  #                                    this_season_fireIDs, ".tif")
+  this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
+                                     this_season_foa_run, "_", this_season_pt, "_FlameLengths_FireID_",
+                                     this_season_fireIDs, ".tif")
+  print(paste0("Reading in Flame Length tifs for Season ", each_season,"..."))
+  this_season_FL_stack <- terra::rast(lapply(this_season_FL_filenames, align_and_stack_tifs, foa_lcp = foa_lcp))
+  
+  #If there is one or fewer fires in the season, use the process_single_fire_season function 
+  if(length(this_season_FL_filenames) <= 1){
+    process_single_fire_season(each_season, this_season_fireIDs, this_season_AD_stack, this_season_FL_stack)
+  } else { #Otherwise, read in the perimeters sqlite database and fetch this season's fire perimeters
+    con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/",foa_run, "_", this_season_pt[1], "_Perimeters.sqlite"))
+    query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
+    season_fire_perims <- RSQLite::dbGetQuery(con, query1)
+    ref_sys <- RSQLite::dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
+    RSQLite::dbDisconnect(con)
+    #Convert these perimeters to an sf object
+    season_fire_perims$GEOMETRY <- sf::st_as_sfc(structure(as.list(season_fire_perims$GEOMETRY),class="blob"), crs = ref_sys$srtext)
+    season_fire_perims <- sf::st_as_sf(season_fire_perims)
+    #Plot to confirm they loaded correctly. There are multiple variables, so just plot the first (the object ID).
+    plot(season_fire_perims, col = "black", max.plot = 1)
+    
+    #Check whether any of the fire perimeters for this season overlap. The result is a matrix of logical outcomes.
+    overlap_matrix <- sf::st_intersects(season_fire_perims, sparse = FALSE)
+    #Use the function find_overlap_indices to determine which fires overlap with which other fires.
+    overlap_indices <- find_overlap_indices(overlap_matrix)
+    print(paste0("There are ",length(overlap_indices), " cases where fires overlap in season ", each_season, "."))
+    #If no fires overlap, use the merge_and_write_rasters function to export the 3-band season tif.
+    if(length(overlap_indices) == 0){
+      merge_and_write_rasters(each_season, this_season_fireIDs, this_season_AD_stack, this_season_FL_stack)
+    } else if(length(overlap_indices) >= 1){ #If there's at least one case of overlap, use the function process_overlapping_fires.
+      process_overlapping_fires(each_season, this_season_fireIDs, this_season_pt, this_season_AD_stack, this_season_FL_stack, season_fire_perims, ref_sys, overlap_indices)
+    }
+  } 
+}
+
+
+#STEP 5: Process seasons in parallel across multiple cores
+#############################################################
+
+# Define the processing function to be run in parallel
+process_single_season <- function(each_season) {
+  process_fire_season(each_season)
+}
+
+# Set up logger
+logger <- create.logger(logfile = "merge_log.txt", level = "INFO")
+
+# plan(multisession, workers = 7)
+
+#Let's try setting up a cluster and using that with future_map()
+cl <- parallel::makeCluster(8)
+plan(cluster, workers = cl)
+
+# Increase serialization buffer size if needed
+options(future.globals.maxSize = 5 * 1024^3) # 5 GB
+
+future_options <- furrr_options(globals=c("wd", "firelists", "foa_run", "scenario", "foa_lcp", "logger",
+                                          "process_single_season", "process_fire_season", "find_overlap_indices",
+                                          "merge_and_write_rasters", "process_overlapping_fires", "handle_more_than_two_overlaps", 
+                                          "handle_two_or_fewer_overlaps", "process_overlaps", "align_and_stack_tifs", 
+                                          "align_raster", "process_single_fire_season", "merge_non_na_first", "count_non_na"), seed=TRUE)
+
+# Use future_map to process in parallel
+results <- future_map(
+  unique_seasons,
+  ~{
+    log4r::info(logger, paste("Processing season: ", .x))
+    process_single_season(.x)
+  },
+  .options = future_options
+)
+
+# Print results after future_map completes
+print(results)
+stopCluster(cl)
