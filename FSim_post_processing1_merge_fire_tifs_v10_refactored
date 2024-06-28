@@ -198,10 +198,7 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
   #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
   #Write the resulting 3-band raster stack.
   terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
-  rm(this_season_AD_stack)
-  rm(this_season_FL_stack)
-  rm(this_season_ID_stack)
-  rm(season_fires_raster_stack)
+  rm(this_season_AD_stack, this_season_FL_stack, this_season_ID_stack, season_fires_raster_stack)
   gc()
 }
 
@@ -226,10 +223,7 @@ merge_and_write_rasters <- function(each_season, this_season_fireIDs, this_seaso
   #plot(season_fires_raster_stack, main = paste0("Season ", each_season, " fire IDs, ADs, & FLs"))
   #Save the 3-band season raster stack
   terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
-  rm(this_season_AD_stack)
-  rm(this_season_FL_stack)
-  rm(this_season_ID_stack)
-  rm(season_fires_raster_stack)
+  rm(this_season_AD_stack, this_season_FL_stack, this_season_ID_stack, season_fires_raster_stack)
   gc()
 }
 
@@ -404,8 +398,6 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_pt, t
     this_season_FL_stack <- this_season_FL_stack[[-fires_to_delete]]
     this_season_fireIDs <- this_season_fireIDs[-fires_to_delete]
   }
-  rm(this_season_AD_stack)
-  rm(this_season_FL_stack)
   #Finally, export the resulting edited tifs in a 3-band season raster stack
   merge_and_write_rasters(each_season, this_season_fireIDs, this_season_AD_stack, this_season_FL_stack)
 }
@@ -462,7 +454,6 @@ process_overlapping_fires <- function(each_season, this_season_fireIDs, this_sea
   #Check how many non-na values there are per pixel to determine which overlap function to apply.
   print("Checking the number of non-NA values (# of fires) per pixel...")
   num_non_na_per_pixel <- terra::app(this_season_AD_stack, fun=count_non_na)
-  rm(this_season_AD_stack)
   max_overlapping_fires <- terra::global(num_non_na_per_pixel, max, na.rm=TRUE)[[1]]
   #If there are more than two overlapping fires, use the handle_more_than_two_overlaps function.
   if(max_overlapping_fires > 2) {
