@@ -471,7 +471,6 @@ process_overlapping_fires <- function(each_season, this_season_fireIDs, this_sea
   num_non_na_per_pixel <- terra::app(this_season_AD_stack, fun=count_non_na)
   rm(this_season_AD_stack)
   max_overlapping_fires <- terra::global(num_non_na_per_pixel, max, na.rm=TRUE)[[1]]
-  rm(num_non_na_per_pixel)
   #If there are more than two overlapping fires, use the handle_more_than_two_overlaps function.
   if(max_overlapping_fires > 2) {
     rm(max_overlapping_fires)
