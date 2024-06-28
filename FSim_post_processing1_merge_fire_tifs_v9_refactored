@@ -535,6 +535,9 @@ logger <- create.logger(logfile = "merge_log.txt", level = "INFO")
 cl <- parallel::makeCluster(8)
 plan(cluster, workers = cl)
 
+#If you have a cluster environment, use the below instead
+#plan(cluster, workers = 64)
+
 # Increase serialization buffer size if needed
 options(future.globals.maxSize = 5 * 1024^3) # 5 GB
 
