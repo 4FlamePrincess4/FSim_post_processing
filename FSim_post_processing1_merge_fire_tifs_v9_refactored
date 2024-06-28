@@ -112,6 +112,15 @@ for(fire_record in 1:nrow(firelists)){
 
 #STEP 3: Define a set of helper functions 
 ###############################################
+# Function to start logging
+start_logging <- function(log_file) {
+  sink(log_file, append = TRUE, split = TRUE)
+}
+
+# Function to stop logging
+stop_logging <- function() {
+  sink()
+}
 
 #Create a function to read fire tif files, align them with the foa raster, and stack them
 align_and_stack_tifs <- function(file, foa_lcp) {
@@ -574,13 +583,11 @@ unique_seasons <- unique(firelists$Season)
 
 # Set up logger
 logger <- create.logger(logfile = "merge_log.txt", level = "INFO")
-
-#The multicore plan allows for forking processes, which is faster but unstable when run through RStudio. 
-# When using this plan, run the full script through the base R console. 
-# plan(multisession, workers = 7)
+captains_log <- "merge_tifs_captains_log.txt"
+start_logging(captains_log)
 
 #Let's try setting up a cluster and using that with future_map()
-cl <- parallel::makeCluster(32)
+cl <- parallel::makeCluster(16)
 plan(cluster, workers = cl)
 
 # Increase serialization buffer size if needed
@@ -602,8 +609,7 @@ results <- future_map(
   .options = future_options
 )
 
-# Print results after future_map completes
-print(results)
+stop_logging()
 stopCluster(cl)
 rm(cl)
 gc()
