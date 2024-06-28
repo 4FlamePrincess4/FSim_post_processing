@@ -571,6 +571,7 @@ process_single_season <- function(each_season) {
 }
 
 unique_seasons <- unique(firelists$Season)
+unique_seasons <- unique_seasons[unique_seasons >= first_season & unique_seasons <= last_season]
 
 # Set up logger
 logger <- create.logger(logfile = "merge_log.txt", level = "INFO")
@@ -581,22 +582,23 @@ logger <- create.logger(logfile = "merge_log.txt", level = "INFO")
 #plan(cluster, workers = cl)
 
 #Use the below if you're on the Alderaan cluster
-# Get the SLURM node names
-node_names <- Sys.getenv("SLURM_JOB_NODELIST")
-# Ensure only the allocated nodes are used
-if (node_names != "") {
-  # Split the node names into a list
-  node_names <- unlist(strsplit(node_names, ","))
-  # Create a cluster using the allocated nodes
-  cl <- makeCluster(node_names)
-} else {
-  stop("No nodes allocated by SLURM.")
-}
+#Skip to set up the future plan unless this doesn't work
+## Get the SLURM node names
+#node_names <- Sys.getenv("SLURM_JOB_NODELIST")
+## Ensure only the allocated nodes are used
+#if (node_names != "") {
+#  # Split the node names into a list
+#  node_names <- unlist(strsplit(node_names, ","))
+#  # Create a cluster using the allocated nodes
+#  cl <- makeCluster(node_names)
+#} else {
+#  stop("No nodes allocated by SLURM.")
+#}
 # Set up the future plan to use the cluster
-plan(cluster, workers = cl)
+plan(cluster, workers = 64)
 
 # Increase serialization buffer size if needed
-options(future.globals.maxSize = 5 * 1024^3) # 5 GB
+# options(future.globals.maxSize = 5 * 1024^3) # 5 GB
 
 future_options <- furrr_options(globals=c("wd", "firelists", "foa_run", "scenario", "foa_lcp", "logger",
                                           "process_single_season", "process_fire_season", "find_overlap_indices",
@@ -616,6 +618,6 @@ results <- future_map(
 
 # Print results after future_map completes
 print(results)
-stopCluster(cl)
-rm(cl)
-gc()
+#stopCluster(cl)
+#rm(cl)
+#gc()
