@@ -585,7 +585,7 @@ plan(cluster, workers = cl)
 # Increase serialization buffer size if needed
 options(future.globals.maxSize = 5 * 1024^3) # 5 GB
 
-future_options <- furrr_options(globals=c("wd", "firelists", "foa_run", "scenario", "foa_lcp", "logger",
+future_options <- furrr_options(globals=c("wd", "firelists", "foa_run", "scenario", "foa_lcp", "logger", "read_and_combine_rasters",
                                           "process_single_season", "process_fire_season", "find_overlap_indices",
                                           "merge_and_write_rasters", "process_overlapping_fires", "handle_more_than_two_overlaps", 
                                           "handle_two_or_fewer_overlaps", "process_overlaps", "align_and_stack_tifs", 
