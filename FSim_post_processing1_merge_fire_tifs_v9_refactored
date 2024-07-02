@@ -4,7 +4,7 @@ library(terra)
 library(tidyterra)
 library(RSQLite)
 library(future)
-library(future.apply)
+#library(future.apply)
 library(furrr)
 library(log4r)
 library(parallel)
@@ -503,7 +503,7 @@ process_fire_season <- function(each_season) {
                                      this_season_fireIDs, ".tif")
   print(paste0("Reading in Arrival Day tifs for Season ", each_season,"..."))
   ## Use on-disk processing for Arrival Day tifs
-  #this_season_AD_file <- future.apply::future_lapply(this_season_AD_filenames, function(filename) {
+  #this_season_AD_file <- lapply(this_season_AD_filenames, function(filename) {
   #  aligned_raster <- align_and_stack_tifs(filename, foa_lcp = foa_lcp)
   #  temp_filename <- tempfile(fileext = ".tif")
   #  terra::writeRaster(aligned_raster, temp_filename, overwrite = TRUE)
@@ -521,7 +521,7 @@ process_fire_season <- function(each_season) {
                                      this_season_fireIDs, ".tif")
   print(paste0("Reading in Flame Length tifs for Season ", each_season,"..."))
   ## Use on-disk processing for Flame Length tifs
-  #this_season_FL_file <- future.apply::future_lapply(this_season_FL_filenames, function(filename) {
+  #this_season_FL_file <- lapply(this_season_FL_filenames, function(filename) {
   #  aligned_raster <- align_and_stack_tifs(filename, foa_lcp = foa_lcp)
   #  temp_filename <- tempfile(fileext = ".tif")
   #  terra::writeRaster(aligned_raster, temp_filename, overwrite = TRUE)
