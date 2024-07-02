@@ -10,8 +10,8 @@ library(log4r)
 library(parallel)
 
 #Set the working directory to the specific outputs folder for the run
-wd <- setwd("C:/FSimProjectFolder/FSim_Outputs/okwen_2022_baseline_foa3c_r3_time0/")
-wd <- setwd("C:/FSimProjectFolder/FSim_Outputs/okwen_2022_baseline_foa3c_r3_time0/")
+wd <- setwd("/data001/projects/sindewal/okwen_foa2c_r10/")
+wd <- setwd("/data001/projects/sindewal/okwen_foa2c_r10/")
 
 #Create directories to store the results
 #dir.create("./SeasonFires_merged_tifs/")
@@ -40,11 +40,8 @@ wd <- setwd("C:/FSimProjectFolder/FSim_Outputs/okwen_2022_baseline_foa3c_r3_time
 foa_run <- "FOA2c_r10"
 scenario <- ""
 run_timepoint <- "baseline_time0"
-foa_lcp <- rast("../../OKWEN_Data/FSim/Landfire2022_LCGs/FOA3c_Landfire2022/FOA3c_LCG_LF2022_FBFM40_230_CONUS.tif", lyrs = 1)
+foa_lcp <- rast("./_inputs/lcp/FOA2c_LCG_LF2022_FBFM40_230_120m.tif", lyrs = 1)
 saveRDS(foa_lcp, file = "foa_lcp.rds")
-okwen_perimeter <- st_read("../../OKWEN_Data/FOA_shapefiles/OkWen_AllFOAs_60km_buffer/OkWen_cFOAs_Albers_60km_Buffer.shp")
-#foa_extent <- ext(foa_lcp)
-#okwen_extent <- ext(okwen_perimeter)
 number_of_seasons <- 20000
 #Use the below if you have an equal number of seasons for each part
 number_of_parts <- 4
@@ -513,7 +510,7 @@ process_fire_season <- function(each_season) {
     season_fire_perims$GEOMETRY <- sf::st_as_sfc(structure(as.list(season_fire_perims$GEOMETRY),class="blob"), crs = ref_sys$srtext)
     season_fire_perims <- sf::st_as_sf(season_fire_perims)
     #Plot to confirm they loaded correctly. There are multiple variables, so just plot the first (the object ID).
-    plot(season_fire_perims, col = "black", max.plot = 1)
+    #plot(season_fire_perims, col = "black", max.plot = 1)
     
     #Check whether any of the fire perimeters for this season overlap. The result is a matrix of logical outcomes.
     overlap_matrix <- sf::st_intersects(season_fire_perims, sparse = FALSE)
