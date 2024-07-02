@@ -4,6 +4,8 @@
 
 #SBATCH --job-name=contifs
 #SBATCH --partition=math-alderaan
+#SBATCH --nodes=1
+#SBATCH --exclusive
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --output=FOA2c_r10_tofu_comb_AD_tifs_slurmlog_%A.out
