@@ -4,10 +4,10 @@ library(terra)
 library(tidyterra)
 library(RSQLite)
 library(future)
-library(future.apply)
+#library(future.apply)
 library(furrr)
 library(log4r)
-library(parallel)
+#library(parallel)
 
 #Set the working directory to the specific outputs folder for the run
 wd <- setwd("/data001/projects/sindewal/okwen_foa2c_r10/")
