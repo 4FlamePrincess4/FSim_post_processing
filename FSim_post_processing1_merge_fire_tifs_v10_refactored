@@ -44,8 +44,8 @@ foa_lcp <- rast("./_inputs/lcp/FOA2c_LCG_LF2022_FBFM40_230_120m.tif", lyrs = 1)
 saveRDS(foa_lcp, file = "foa_lcp.rds")
 number_of_seasons <- 20000
 #Use the below if you have an equal number of seasons for each part
-number_of_parts <- 4
-seasons_per_part <- c(rep(5000, number_of_parts))
+number_of_parts <- 8
+seasons_per_part <- c(rep(2500, number_of_parts))
 #Use the below alternative if you have different numbers of seasons for each part
 #seasons_per_part <- c(5000, 7000, 2000, 1000, 5000)
 
