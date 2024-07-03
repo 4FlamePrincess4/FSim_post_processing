@@ -4,50 +4,69 @@ library(terra)
 library(tidyterra)
 library(RSQLite)
 library(future)
-#library(future.apply)
 library(furrr)
 library(log4r)
-#library(parallel)
+library(optparse)
+
+#Set up input arguments with optparse
+option_list = list(
+  make_option(c("-i", "--foa_lcp_path"), type="character", default=NULL,
+              help="foa lcp path (mandatory)", metavar="character"),
+  make_option(c("-w", "--working_directory"), type="character", default=NULL,
+              help="working directory (mandatory)", metavar="character"),
+  make_option(c("-r", "--foa_run"), type="character", default=NULL,
+              help="foa run label (mandatory)", metavar="character"),
+  make_option(c("-s", "--scenario"), type="character", default=NULL,
+              help="project scenario (mandatory)", metavar="character"),
+  make_option(c("-t", "--run_timepoint"), type="character", default=NULL,
+              help="timepoint for the scenario (mandatory)", metavar="character"),
+  make_option(c("-n", "--number_of_seasons"), type="integer", default=NULL,
+              help="total number of seasons (mandatory)", metavar="integer"),
+  make_option(c("--seasons_in_part"), type="integer", default=NULL,
+              help="number of seasons in a part", metavar="integer"),
+  make_option(c("--number_of_parts"), type="integer", default=NULL,
+              help="number of run parts", metavar="integer"),
+  make_option(c("-o", "--output"), type="character", default="merge_tifs_captains_log.txt",
+              help="output file [default= %default]", metavar="character")
+  make_option(c("-f", "--first_season"), type="integer", default=NULL,
+              help="first season (mandatory)", metavar="integer"),
+  make_option(c("-l", "--last_season"), type="integer", default=NULL,
+              help="last season (mandatory)", metavar="integer"),
+  make_option(c("-j", "--seasons_per_part"), type="character", default=NULL,
+              help="vector of number of seasons in a part", metavar="character")
+)
+# parse the command-line options
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
 
 #Set the working directory to the specific outputs folder for the run
-wd <- setwd("/data001/projects/sindewal/okwen_foa2c_r10/")
-wd <- setwd("/data001/projects/sindewal/okwen_foa2c_r10/")
+wd <- setwd(opt$working_directory)
+wd <- setwd(opt$working_directory)
 
-#Create directories to store the results
-#dir.create("./SeasonFires_merged_tifs/")
+#########################################################################################
+# NOTE: To run this code, you need to make sure the following FSim outputs are in the   #
+#       working directory: the FireSizeList.csv files, the  ArrivalDays tifs, the       #
+#       FlameLengths tifs, the Ignitions.sqlite files, and the Perimeters.sqlite files. # 
+#       You also need to use the rename_tifs script to append the directory name (with  #
+#       the run & part info) to the beginning of the file names.                        #
+#########################################################################################
+##                                CODE DESCRIPTION                                     ##
+# The plan is to use the fire perimeters to determine whether any fires overlap.        #
+# If they do not overlap, we will simply merge the tifs. If they do overlap, we will    #
+# store the fire IDs, use the IDs to fetch and stackthe correct tifs, do the            #
+# cell-by-cell minimum arrival day operation to save only the earliest arrival days.    #
+# We can then use the perimeters and ignition points to delete remaining overburn       #
+# before moving on to the next season.                                                  #
+######################################################################################### 
 
-
-#######################################################################################
-# NOTE: To run this code, you need to make sure the following FSim outputs are in the #
-#       working directory: the FireSizeList.csv files, the  ArrivalDays tifs, and     #
-#        the FlameLengths tifs files. You also need to use the rename_tifs script to  #
-#       append the directory name (with the run & part info) to the beginning of the  #
-#       file names.                                                                   #
-#######################################################################################
-##                                CODE DESCRIPTION                                   ##
-# The plan is to use the fire perimeters to determine whether any fires overlap.      #
-# If they do not overlap, we will simply merge the tifs. If they do overlap, we will  #
-# store the fire IDs, use the IDs to fetch the correct tifs, merge the perimeters and #
-# save the merged extent, clip the tifs to the extent to save processing time, then   #
-# do the cell-by-cell minimum arrival day operation to save only the earliest arrival #
-# days. We can then resize the tifs back to the foa extent and add them back to the   #
-# tif stack in place of the previous version. Lastly, we'll use the perimeters and    #
-# ignition points to delete remaining overburn before moving on to the next season.   #
-####################################################################################### 
-
-#STEP 1: Record run information below 
+#STEP 1: Run information - see the slurm script
 ###############################################
-foa_run <- "FOA2c_r10"
-scenario <- ""
-run_timepoint <- "baseline_time0"
-foa_lcp <- rast("./_inputs/lcp/FOA2c_LCG_LF2022_FBFM40_230_120m.tif", lyrs = 1)
-saveRDS(foa_lcp, file = "foa_lcp.rds")
-number_of_seasons <- 20000
-#Use the below if you have an equal number of seasons for each part
-number_of_parts <- 8
-seasons_per_part <- c(rep(2500, number_of_parts))
-#Use the below alternative if you have different numbers of seasons for each part
-#seasons_per_part <- c(5000, 7000, 2000, 1000, 5000)
+# calculate or parse seasons_per_part
+if (is.null(opt$seasons_per_part)) {
+  seasons_per_part <- rep(opt$seasons_in_part, opt$number_of_parts)
+} else {
+  seasons_per_part <- as.integer(unlist(strsplit(opt$seasons_per_part, ",")))
+}
 
 #STEP 2: Combine fire lists from all four run parts
 ###############################################
@@ -89,7 +108,7 @@ for(j in 1:length(seasons_per_part)){
 
 #Initialize an empty vector and add it as a column to the firelists dataframe
 Part <- vector("character",nrow(firelists))
-Scenario <- rep(scenario, nrow(firelists))
+Scenario <- rep(opt$scenario, nrow(firelists))
 firelists <- cbind(firelists,Part,Scenario)
 #Sort the firelists dataframe by Season number
 firelists <- firelists[order(firelists$Season),]
@@ -233,7 +252,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_pt, t
                                    overlapping_fire_ids_df$fire_id2)
   unique_overlapping_fire_ids <- unique(unique_overlapping_fire_ids)
   # Load the ignition database corresponding to the season part
-  con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/",foa_run, "_",
+  con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_",
                                              this_season_pt[1], "_Ignitions.sqlite"))
   # Construct the SQL query to select the ignitions based on the IDs
   query <- paste("SELECT * FROM ignitions WHERE fire_id IN (", 
@@ -460,10 +479,10 @@ process_overlapping_fires <- function(each_season, this_season_fireIDs, this_sea
   }
 }
 
-process_fire_season <- function(each_season) {
+process_fire_season <- function(each_season, opt$foa_lcp_path) {
   library(RSQLite)
   print(paste0("Processing Season ", each_season,"..."))
-  foa_lcp <- readRDS("foa_lcp.rds")
+  foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
   foa_lcp <- terra::unwrap(foa_lcp)
   #Subset the firelists by the current season
   this_season_fires <- firelists %>%
@@ -501,7 +520,7 @@ process_fire_season <- function(each_season) {
   if(length(this_season_FL_filenames) <= 1){
     process_single_fire_season(each_season, this_season_fireIDs, this_season_AD_stack, this_season_FL_stack)
   } else { #Otherwise, read in the perimeters sqlite database and fetch this season's fire perimeters
-    con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/",foa_run, "_", this_season_pt[1], "_Perimeters.sqlite"))
+    con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_", this_season_pt[1], "_Perimeters.sqlite"))
     query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
     season_fire_perims <- RSQLite::dbGetQuery(con, query1)
     ref_sys <- RSQLite::dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
@@ -531,8 +550,8 @@ process_fire_season <- function(each_season) {
 #############################################################
 
 # Define the processing function to be run in parallel
-process_single_season <- function(each_season) {
-  process_fire_season(each_season)
+process_single_season <- function(each_season, opt$foa_lcp_path) {
+  process_fire_season(each_season, opt$foa_lcp_path)
 }
 
 unique_seasons <- unique(firelists$Season)
@@ -540,7 +559,7 @@ unique_seasons <- unique_seasons[unique_seasons >= first_season & unique_seasons
 
 # Set up logger
 logger <- create.logger(logfile = "merge_log.txt", level = "INFO")
-captains_log <- "merge_tifs_captains_log.txt"
+captains_log <- opt$output
 start_logging(captains_log)
 
 #Use the below if you're on one of the Titan machines
@@ -561,13 +580,14 @@ start_logging(captains_log)
 #} else {
 #  stop("No nodes allocated by SLURM.")
 #}
+
 # Set up the future plan to use the cluster
 plan(cluster, workers = 64)
 
 # Increase serialization buffer size if needed
-# options(future.globals.maxSize = 5 * 1024^3) # 5 GB
+options(future.globals.maxSize = 5 * 1024^3) # 5 GB
 
-future_options <- furrr_options(globals=c("wd", "firelists", "foa_run", "scenario", "foa_lcp", "logger",
+future_options <- furrr_options(globals=c("wd", "firelists", "opt$foa_run", "opt$scenario", "opt$foa_lcp_path", "logger",
                                           "process_single_season", "process_fire_season", "find_overlap_indices",
                                           "merge_and_write_rasters", "process_overlapping_fires", "handle_more_than_two_overlaps", 
                                           "handle_two_or_fewer_overlaps", "process_overlaps", "align_and_stack_tifs", 
