@@ -5,24 +5,21 @@
 #SBATCH --job-name=contifs
 #SBATCH --partition=math-alderaan
 #SBATCH --nodes=1
-#SBATCH --exclusive
 #SBATCH --ntasks=64
 #SBATCH --cpus-per-task=1
-#SBATCH --output=FOA2c_r10_tofu_comb_AD_tifs_slurmlog_%A.out
-#SBATCH --error=FOA2c_r10_tofu_comb_AD_tifs_error_%A.log
+#SBATCH --output=FOA2c_r10_comb_AD_tifs_slurmlog_%A.out
+#SBATCH --error=FOA2c_r10_comb_AD_tifs_error_%A.log
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=laurel.sindewald@ucdenver.edu
 
 # Change to the directory containing your R script
 cd /data001/projects/sindewal/FSim_post_processing/
+# Make a directory to hold the merged tifs
+mkdir ../okwen_foa2c_r10/SeasonFires_merged_tifs/
 
 # Load necessary modules 
+conda activate r_env
 R
 
-# Specify the first and last seasons for this job.
-first_season <- 1
-last_season <- 2500
-
 # Run the R script
-echo "Running R script..."
-Rscript FSim_post_processing1_merge_fire_tifs_v10_refactored.R
+Rscript FSim_post_processing1_merge_fire_tifs_v10_refact_slurm.R --foa_lcp_path ./_inputs/lcp/FOA2c_LCG_LF2022_FBFM40_230_120m.tif --working_directory /data001/projects/sindewal/okwen_foa2c_r10/ --foa_run FOA2c_r10 --scenario "" --run_timepoint baseline_time0 --number_of_seasons 20000 --seasons_in_part 2500 --number_of_parts 8 --first_season 1 --last_season 2500 
