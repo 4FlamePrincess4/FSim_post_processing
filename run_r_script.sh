@@ -17,9 +17,8 @@ cd /data001/projects/sindewal/FSim_post_processing/
 # Make a directory to hold the merged tifs
 mkdir ../okwen_foa2c_r10/SeasonFires_merged_tifs/
 
-# Load necessary modules 
-conda activate r_env
-R
+# Activate conda environment 
+source /data001/projects/sindewal/anaconda3/bin/activate r_env
 
 # Run the R script
-Rscript FSim_post_processing1_merge_fire_tifs_v10_refact_slurm.R --foa_lcp_path ./_inputs/lcp/FOA2c_LCG_LF2022_FBFM40_230_120m.tif --working_directory /data001/projects/sindewal/okwen_foa2c_r10/ --foa_run FOA2c_r10 --scenario "" --run_timepoint baseline_time0 --number_of_seasons 20000 --seasons_in_part 2500 --number_of_parts 8 --first_season 1 --last_season 2500 
+/data001/projects/sindewal/anaconda3/envs/r_env/bin/Rscript FSim_post_processing1_merge_fire_tifs_v10_refact_slurm.R --foa_lcp_path ./_inputs/lcp/FOA2c_LCG_LF2022_FBFM40_230_120m.tif --working_directory /data001/projects/sindewal/okwen_foa2c_r10/ --foa_run FOA2c_r10 --scenario "" --run_timepoint baseline_time0 --number_of_seasons 20000 --seasons_in_part 2500 --number_of_parts 8 --first_season 1 --last_season 2500 
