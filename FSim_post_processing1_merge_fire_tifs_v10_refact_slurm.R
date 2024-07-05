@@ -423,7 +423,7 @@ handle_more_than_two_overlaps <- function(each_season, this_season_fireIDs, this
   #This function processes cases where there are more than two overlapping fires at a single pixel.
   print(paste("There are up to", max_overlapping_fires, "fires at a single pixel."))
   #Find which cell indices have the excess overlap
-  cells_over_two_overlap <- which(values(num_non_na_per_pixel) > 2)
+  cells_over_two_overlap <- which(terra::values(num_non_na_per_pixel) > 2)
   excess_overlap_fires <- c()
   non_na_indices_list <- list()
   #Get the fire IDs for the fires that overlap at these locations
