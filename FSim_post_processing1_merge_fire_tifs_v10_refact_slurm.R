@@ -555,7 +555,7 @@ process_single_season <- function(each_season, opt) {
 }
 
 unique_seasons <- unique(firelists$Season)
-unique_seasons <- unique_seasons[unique_seasons >= first_season & unique_seasons <= last_season]
+unique_seasons <- unique_seasons[unique_seasons >= opt$first_season & unique_seasons <= opt$last_season]
 
 # Set up logger
 logger <- create.logger(logfile = "merge_log.txt", level = "INFO")
