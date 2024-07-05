@@ -479,7 +479,7 @@ process_overlapping_fires <- function(each_season, this_season_fireIDs, this_sea
   }
 }
 
-process_fire_season <- function(each_season, opt$foa_lcp_path) {
+process_fire_season <- function(each_season, opt) {
   library(RSQLite)
   print(paste0("Processing Season ", each_season,"..."))
   foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
@@ -550,8 +550,8 @@ process_fire_season <- function(each_season, opt$foa_lcp_path) {
 #############################################################
 
 # Define the processing function to be run in parallel
-process_single_season <- function(each_season, opt$foa_lcp_path) {
-  process_fire_season(each_season, opt$foa_lcp_path)
+process_single_season <- function(each_season, opt) {
+  process_fire_season(each_season, opt)
 }
 
 unique_seasons <- unique(firelists$Season)
@@ -587,7 +587,7 @@ plan(cluster, workers = 64)
 # Increase serialization buffer size if needed
 options(future.globals.maxSize = 5 * 1024^3) # 5 GB
 
-future_options <- furrr_options(globals=c("wd", "firelists", "opt$foa_run", "opt$scenario", "opt$foa_lcp_path", "logger",
+future_options <- furrr_options(globals=c("wd", "firelists", "opt", "logger",
                                           "process_single_season", "process_fire_season", "find_overlap_indices",
                                           "merge_and_write_rasters", "process_overlapping_fires", "handle_more_than_two_overlaps", 
                                           "handle_two_or_fewer_overlaps", "process_overlaps", "align_and_stack_tifs", 
