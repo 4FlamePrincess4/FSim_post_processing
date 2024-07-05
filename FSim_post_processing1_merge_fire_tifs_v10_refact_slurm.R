@@ -27,7 +27,7 @@ option_list = list(
   make_option(c("--number_of_parts"), type="integer", default=NULL,
               help="number of run parts", metavar="integer"),
   make_option(c("-o", "--output"), type="character", default="merge_tifs_captains_log.txt",
-              help="output file [default= %default]", metavar="character")
+              help="output file [default= %default]", metavar="character"),
   make_option(c("-f", "--first_season"), type="integer", default=NULL,
               help="first season (mandatory)", metavar="integer"),
   make_option(c("-l", "--last_season"), type="integer", default=NULL,
