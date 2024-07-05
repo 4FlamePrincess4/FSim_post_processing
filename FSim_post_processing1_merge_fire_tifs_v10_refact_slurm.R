@@ -479,7 +479,7 @@ process_overlapping_fires <- function(each_season, this_season_fireIDs, this_sea
   }
 }
 
-process_fire_season <- function(each_season, opt) {
+process_fire_season <- function(each_season) {
   library(RSQLite)
   print(paste0("Processing Season ", each_season,"..."))
   foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
@@ -491,7 +491,7 @@ process_fire_season <- function(each_season, opt) {
   this_season_fireIDs <- as.character(this_season_fires$FireID)
   this_season_pt <- as.character(this_season_fires$Part)
   this_season_scen <- as.character(this_season_fires$Scenario)
-  this_season_foa_run <- rep(foa_run, length(this_season_fireIDs))
+  this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
   #Use this info to read in the arrival day tif filenames for this season's fires
   #De-comment the below when you have a scenario
   # this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
@@ -550,8 +550,8 @@ process_fire_season <- function(each_season, opt) {
 #############################################################
 
 # Define the processing function to be run in parallel
-process_single_season <- function(each_season, opt) {
-  process_fire_season(each_season, opt)
+process_single_season <- function(each_season) {
+  process_fire_season(each_season)
 }
 
 unique_seasons <- unique(firelists$Season)
