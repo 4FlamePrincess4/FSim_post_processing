@@ -161,11 +161,11 @@ find_overlap_indices <- function(overlap_matrix) {
 merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_id, foa_lcp) {
   
   # Read the ArrivalDay and FlameLength rasters
-  arrival_day <- rast(arrival_day_path)
-  flame_length <- rast(flame_length_path)
+  arrival_day <- terra::rast(arrival_day_path)
+  flame_length <- terra::rast(flame_length_path)
   # Set CRS to match foa_lcp
-  crs(arrival_day) <- crs(foa_lcp)
-  crs(flame_length) <- crs(foa_lcp)
+  terra::crs(arrival_day) <- terra::crs(foa_lcp)
+  terra::crs(flame_length) <- terra::crs(foa_lcp)
   # Compare ArrivalDay values with the accumulation raster
   mask_min <- arrival_day < accum_AD | is.na(accum_AD)
   # Update the accumulation raster with minimum values
@@ -173,9 +173,9 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
   # Set non-minimum values to NA in the current fire's ArrivalDay raster
   arrival_day[!mask_min] <- NA
   # Use the adjusted ArrivalDay raster to mask the FlameLength raster
-  flame_length_masked <- mask(flame_length, arrival_day, maskvalue = NA)
+  flame_length_masked <- terra::mask(flame_length, arrival_day, maskvalue = NA)
   # Update the accumulation FlameLength raster
-  accum_FL <- merge(accum_FL, flame_length_masked)
+  accum_FL <- terra::merge(accum_FL, flame_length_masked)
   # Update the Fire ID raster with the current fire ID for minimum values
   accum_ID[mask_min] <- fire_id
   
@@ -203,7 +203,7 @@ process_single_fire_season <- function(each_season, this_season_fireIDs) {
   this_season_AD_filename <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
                                      this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
                                      this_season_fireIDs, ".tif")
-  this_season_AD_stack <- rast(this_season_AD_filename)
+  this_season_AD_stack <- terra::rast(this_season_AD_filename)
   #Use this info to read in the flame length tif filenames for this season's fires
   #De-comment the below when you have a scenario
   # this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
@@ -212,7 +212,7 @@ process_single_fire_season <- function(each_season, this_season_fireIDs) {
   this_season_FL_filename <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
                                      this_season_foa_run, "_", this_season_pt, "_FlameLengths_FireID_",
                                      this_season_fireIDs, ".tif")
-  this_season_FL_stack <- rast(this_season_FL_filename)
+  this_season_FL_stack <- terra::rast(this_season_FL_filename)
   #Create the fire ID raster
   this_season_ID_stack <- terra::rast(nrows = nrow(this_season_AD_stack), ncols = ncol(this_season_AD_stack), ext = ext(this_season_AD_stack), crs = crs(this_season_AD_stack), vals = NA)
   this_season_fireIDs <- as.numeric(this_season_fireIDs)
@@ -364,9 +364,9 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_pt, s
     this_season_fireIDs <- this_season_fireIDs[-fires_to_delete]
   }
   # Create empty accumulator rasters
-  accum_ID <- rast(foa_lcp)
-  accum_AD <- rast(foa_lcp)
-  accum_FL <- rast(foa_lcp)
+  accum_ID <- terra::rast(foa_lcp)
+  accum_AD <- terra::rast(foa_lcp)
+  accum_FL <- terra::rast(foa_lcp)
   # Initialize accumulator rasters with NAs
   values(accum_ID) <- NA
   values(accum_AD) <- NA
@@ -490,9 +490,9 @@ process_fire_season <- function(each_season) {
     #If no fires overlap, use the merge_and_write_rasters function to export the 3-band season tif.
     if(length(overlap_indices) == 0){
       # Create empty accumulator rasters
-      accum_ID <- rast(foa_lcp)
-      accum_AD <- rast(foa_lcp)
-      accum_FL <- rast(foa_lcp)
+      accum_ID <- terra::rast(foa_lcp)
+      accum_AD <- terra::rast(foa_lcp)
+      accum_FL <- terra::rast(foa_lcp)
       # Initialize accumulator rasters with NAs
       values(accum_ID) <- NA
       values(accum_AD) <- NA
