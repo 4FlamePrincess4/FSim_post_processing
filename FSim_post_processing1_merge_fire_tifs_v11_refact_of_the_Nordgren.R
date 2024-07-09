@@ -368,9 +368,9 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_pt, s
   accum_AD <- terra::rast(foa_lcp)
   accum_FL <- terra::rast(foa_lcp)
   # Initialize accumulator rasters with NAs
-  values(accum_ID) <- NA
-  values(accum_AD) <- NA
-  values(accum_FL) <- NA
+  terra::values(accum_ID) <- NA
+  terra::values(accum_AD) <- NA
+  terra::values(accum_FL) <- NA
   # Create lists of the file names for the season
   #De-comment the below when you have a scenario
   # this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
@@ -494,9 +494,9 @@ process_fire_season <- function(each_season) {
       accum_AD <- terra::rast(foa_lcp)
       accum_FL <- terra::rast(foa_lcp)
       # Initialize accumulator rasters with NAs
-      values(accum_ID) <- NA
-      values(accum_AD) <- NA
-      values(accum_FL) <- NA
+      terra::values(accum_ID) <- NA
+      terra::values(accum_AD) <- NA
+      terra::values(accum_FL) <- NA
       # Create lists of the file names for the season
       #De-comment the below when you have a scenario
       # this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
