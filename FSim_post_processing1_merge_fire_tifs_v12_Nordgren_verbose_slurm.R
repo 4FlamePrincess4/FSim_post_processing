@@ -33,8 +33,8 @@ option_list = list(
               help="last season (mandatory)", metavar="integer"),
   make_option(c("-j", "--seasons_per_part"), type="character", default=NULL,
               help="vector of number of seasons in a part", metavar="character"),
-  make_option(c("-f", "--merge_fires_part"), type="integer", default=NULL,
-              help="the part number for the merge fires script", metavar="integer")
+  make_option(c("-f", "--merge_fires_part"), type="character", default=NULL,
+              help="the part number for the merge fires script", metavar="character")
 )
 # parse the command-line options
 opt_parser = OptionParser(option_list=option_list)
