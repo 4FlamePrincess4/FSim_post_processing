@@ -364,6 +364,8 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_pt, s
     this_season_fireIDs <- this_season_fireIDs[-fires_to_delete]
   }
   # Create empty accumulator rasters
+  foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
+  foa_lcp <- terra::unwrap(foa_lcp)
   accum_ID <- terra::rast(foa_lcp)
   accum_AD <- terra::rast(foa_lcp)
   accum_FL <- terra::rast(foa_lcp)
@@ -399,7 +401,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_pt, s
   #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
   #Write the resulting 3-band raster stack.
   terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
-  rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack)
+  rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack, foa_lcp)
   gc()
 }
 
@@ -525,7 +527,7 @@ process_fire_season <- function(each_season) {
       #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
       #Write the resulting 3-band raster stack.
       terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
-      rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack)
+      rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack, foa_lcp)
       gc()
     } else if(length(overlap_indices) >= 1){ #If there's at least one case of overlap, use the function process_overlapping_fires.
       process_overlapping_fires(each_season, this_season_fireIDs, this_season_pt, season_fire_perims, ref_sys, overlap_indices)
