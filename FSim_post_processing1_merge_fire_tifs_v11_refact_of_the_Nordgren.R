@@ -407,7 +407,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_pt, s
   gc()
 }
 
-process_overlapping_fires <- function(each_season, this_season_fireIDs, this_season_pt, this_season_AD_stack, this_season_FL_stack, season_fire_perims, ref_sys, overlap_indices) {
+process_overlapping_fires <- function(each_season, this_season_fireIDs, this_season_pt, season_fire_perims, ref_sys, overlap_indices) {
   #Create a dataframe with overlapping fire IDs
   overlapping_fire_ids_df <- do.call(rbind, lapply(overlap_indices, function(pair) {
     data.frame(fire_id1 = season_fire_perims$fire_id[pair[1]], fire_id2 = season_fire_perims$fire_id[pair[2]])
