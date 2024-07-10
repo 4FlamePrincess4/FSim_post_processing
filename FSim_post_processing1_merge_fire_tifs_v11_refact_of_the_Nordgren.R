@@ -158,7 +158,7 @@ find_overlap_indices <- function(overlap_matrix) {
 }
 
 #Function to keep only minimum ArrivalDay values with Bryce's accumulator method
-merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_id, foa_lcp) {
+merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_id, foa_lcp, accum_AD, accum_FL, accum_ID) {
   
   # Read the ArrivalDay and FlameLength rasters
   arrival_day <- terra::rast(arrival_day_path)
@@ -391,7 +391,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_pt, s
   # Read in each fire and update the accumulators
   for(fire in 1:length(this_season_AD_filenames)){
     result <- merge_tifs_w_accumulator(this_season_AD_filenames[fire], this_season_FL_filenames[fire],
-                                       this_season_fireIDs[fire], foa_lcp)
+                                       this_season_fireIDs[fire], foa_lcp, accum_AD, accum_FL, accum_ID)
     accum_ID <- result$accum_ID
     accum_AD <- result$accum_AD
     accum_FL <- result$accum_FL
@@ -517,7 +517,7 @@ process_fire_season <- function(each_season) {
       # Read in each fire and update the accumulators
       for(fire in 1:length(this_season_AD_filenames)){
         result <- merge_tifs_w_accumulator(this_season_AD_filenames[fire], this_season_FL_filenames[fire],
-                                           this_season_fireIDs[fire], foa_lcp)
+                                           this_season_fireIDs[fire], foa_lcp, accum_AD, accum_FL, accum_ID)
         accum_ID <- result$accum_ID
         accum_AD <- result$accum_AD
         accum_FL <- result$accum_FL
