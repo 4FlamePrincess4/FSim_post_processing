@@ -179,7 +179,7 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
   # Update the accumulation FlameLength raster
   accum_FL <- terra::merge(accum_FL, flame_length_masked)
   # Update the Fire ID raster with the current fire ID for minimum values
-  accum_ID[mask_min] <- fire_id
+  accum_ID[mask_min] <- as.numeric(fire_id)
   
   return(list(accum_ID = accum_ID, accum_AD = accum_AD, accum_FL = accum_FL))
 }
