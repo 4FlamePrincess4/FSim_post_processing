@@ -311,8 +311,8 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
       # Extract the coordinates of the ignition point
       first_ig_coords <- sf::st_coordinates(first_ig)
       # Extract the arrival day value at the ignition point location
-      this_perim_AD_raster <- terra::rast(paste0(wd,"/",this_season_foa_run,"_","this_season_pt,"_ArrivalDays/",
-                                                 this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",second_ID,".tif"))
+      this_perim_AD_raster <- terra::rast(paste0(wd, "/", this_season_foa_run, "_", this_season_pt, "_ArrivalDays/",
+                                                 this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_", second_ID, ".tif"))
       second_fire_AD <- this_perim_AD_raster[[second_index]]
       print(second_fire_AD)
       second_fire_AD_df <- terra::extract(second_fire_AD, matrix(first_ig_coords, ncol=2))
@@ -341,8 +341,8 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
       # Extract the coordinates of the ignition point
       second_ig_coords <- sf::st_coordinates(second_ig)
       # Extract the arrival day value at the ignition point location
-      this_perim_AD_raster <- terra::rast(paste0(wd,"/",this_season_foa_run,"_","this_season_pt,"_ArrivalDays/",
-                                                 this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",first_ID,".tif"))
+      this_perim_AD_raster <- terra::rast(paste0(wd, "/", this_season_foa_run, "_", this_season_pt, "_ArrivalDays/",
+                                                 this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_", first_ID, ".tif"))
       first_fire_AD <- this_perim_AD_raster[[first_index]]
       first_fire_AD_df <- terra::extract(first_fire_AD, matrix(second_ig_coords, ncol=2))
       # Extract the value itself from the resulting dataframe
