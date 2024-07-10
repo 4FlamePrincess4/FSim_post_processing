@@ -216,7 +216,7 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
                                      this_season_fireIDs, ".tif")
   this_season_FL_stack <- terra::rast(this_season_FL_filename)
   #Create the fire ID raster
-  this_season_ID_stack <- terra::rast(nrows = nrow(this_season_AD_stack), ncols = ncol(this_season_AD_stack), ext = ext(this_season_AD_stack), crs = crs(this_season_AD_stack), vals = NA)
+  this_season_ID_stack <- terra::rast(nrows = nrow(this_season_AD_stack), ncols = ncol(this_season_AD_stack), ext = terra::ext(this_season_AD_stack), crs = terra::crs(this_season_AD_stack), vals = NA)
   this_season_fireIDs <- as.numeric(this_season_fireIDs)
   print("Creating the fire ID raster...")
   for(fireid in 1:terra::nlyr(this_season_AD_stack)){
