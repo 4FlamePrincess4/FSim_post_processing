@@ -166,6 +166,8 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
   # Set CRS to match foa_lcp
   terra::crs(arrival_day) <- terra::crs(foa_lcp)
   terra::crs(flame_length) <- terra::crs(foa_lcp)
+  arrival_day <- terra::extend(arrival_day, terra::ext(foa_lcp), snap="near")
+  flame_length <- terra::extend(flame_length, terra::ext(foa_lcp), snap="near")
   # Compare ArrivalDay values with the accumulation raster
   mask_min <- arrival_day < accum_AD | is.na(accum_AD)
   # Update the accumulation raster with minimum values
