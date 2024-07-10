@@ -32,7 +32,9 @@ option_list = list(
   make_option(c("-l", "--last_season"), type="integer", default=NULL,
               help="last season (mandatory)", metavar="integer"),
   make_option(c("-j", "--seasons_per_part"), type="character", default=NULL,
-              help="vector of number of seasons in a part", metavar="character")
+              help="vector of number of seasons in a part", metavar="character"),
+  make_option(c("-f", "--merge_fires_part"), type="character", default=NULL,
+              help="the part number for the merge fires script", metavar="character")
 )
 # parse the command-line options
 opt_parser = OptionParser(option_list=option_list)
@@ -513,8 +515,8 @@ unique_seasons <- unique(firelists$Season)
 unique_seasons <- unique_seasons[unique_seasons >= opt$first_season & unique_seasons <= opt$last_season]
 
 # Set up logger
-captains_log <- opt$output
-start_logging(captains_log)
+paste0(captains_log, opt$merge_fires_part) <- opt$output
+start_logging(paste0(captains_log, opt$merge_fires_part))
 
 #Use the below if you're on one of the Titan machines
 #Set up a cluster and using that with future_map()
