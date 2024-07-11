@@ -572,8 +572,8 @@ unique_seasons <- unique(firelists$Season)
 unique_seasons <- unique_seasons[unique_seasons >= opt$first_season & unique_seasons <= opt$last_season]
 
 # Set up logger
-paste0(captains_log, opt$merge_fires_part) <- opt$output
-start_logging(paste0(captains_log, opt$merge_fires_part))
+paste0("captains_log", opt$merge_fires_part) <- opt$output
+start_logging(paste0("captains_log", opt$merge_fires_part))
 
 #Use the below if you're on one of the Titan machines
 #Set up a cluster and using that with future_map()
