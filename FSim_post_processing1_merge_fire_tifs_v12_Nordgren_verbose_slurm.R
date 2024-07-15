@@ -25,8 +25,6 @@ option_list = list(
               help="number of seasons in a part", metavar="integer"),
   make_option(c("--number_of_parts"), type="integer", default=NULL,
               help="number of run parts", metavar="integer"),
-  make_option(c("-o", "--output"), type="character", default="merge_tifs_captains_log.txt",
-              help="output file [default= %default]", metavar="character"),
   make_option(c("-f", "--first_season"), type="integer", default=NULL,
               help="first season (mandatory)", metavar="integer"),
   make_option(c("-l", "--last_season"), type="integer", default=NULL,
@@ -572,8 +570,8 @@ unique_seasons <- unique(firelists$Season)
 unique_seasons <- unique_seasons[unique_seasons >= opt$first_season & unique_seasons <= opt$last_season]
 
 # Set up logger
-paste0("captains_log", opt$merge_fires_part) <- opt$output
-start_logging(paste0("captains_log", opt$merge_fires_part))
+merge_log_filename <- paste0("merge_tifs_captains_log_", opt$merge_fires_part, ".txt")
+start_logging(merge_log_filename)
 
 #Use the below if you're on one of the Titan machines
 #Set up a cluster and using that with future_map()
