@@ -183,20 +183,31 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
   # Set CRS to match foa_lcp
   terra::crs(arrival_day) <- terra::crs(foa_lcp)
   terra::crs(flame_length) <- terra::crs(foa_lcp)
+  # Extend rasters to match the extent of foa_lcp
   arrival_day <- terra::extend(arrival_day, terra::ext(foa_lcp), snap="near")
   flame_length <- terra::extend(flame_length, terra::ext(foa_lcp), snap="near")
+  
   # Compare ArrivalDay values with the accumulation raster
   mask_min <- arrival_day < accum_AD | is.na(accum_AD)
+  
   # Update the accumulation raster with minimum values
   accum_AD[mask_min] <- arrival_day[mask_min]
+  #terra::plot(accum_AD, main = "Accumulated arrival days")
+  
   # Set non-minimum values to NA in the current fire's ArrivalDay raster
   arrival_day[!mask_min] <- NA
+  
   # Use the adjusted ArrivalDay raster to mask the FlameLength raster
   flame_length_masked <- terra::mask(flame_length, arrival_day, maskvalue = NA)
+  
   # Update the accumulation FlameLength raster
-  accum_FL <- terra::merge(accum_FL, flame_length_masked)
+  accum_FL[!is.na(flame_length_masked)] <- flame_length_masked[!is.na(flame_length_masked)]
+  #terra::plot(accum_FL, main = "Accumulated flame lengths")
+  
   # Update the Fire ID raster with the current fire ID for minimum values
-  accum_ID[mask_min] <- as.numeric(fire_id)
+  accum_ID_mask <- !is.na(arrival_day)
+  accum_ID[accum_ID_mask] <- as.numeric(fire_id)
+  #terra::plot(accum_ID, main = "Accumulated fire IDs")
   
   return(list(accum_ID = accum_ID, accum_AD = accum_AD, accum_FL = accum_FL))
 }
