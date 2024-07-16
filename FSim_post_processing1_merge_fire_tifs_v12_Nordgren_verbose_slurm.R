@@ -137,6 +137,23 @@ stop_logging <- function() {
   sink()
 }
 
+#Create a function to read fire tif files, align them with the foa raster, and stack them
+align_and_stack_tifs <- function(file, foa_lcp) {
+  fire_raster <- terra::rast(file)
+  foa_lcp <- terra::unwrap(foa_lcp)
+  aligned_fire <- align_raster(fire_raster, foa_lcp)
+  return(aligned_fire)
+}
+#Create a function to align the individual fire tifs with the FOA lcp tif
+align_raster <- function(fire_raster, foa_lcp) {
+  foa_lcp <- terra::unwrap(foa_lcp)
+  # Define the projection of the fire raster to match the projection of the foa raster
+  terra::crs(fire_raster) <- terra::crs(foa_lcp)
+  # Project the fire raster to align with the foa raster
+  fire_raster <- terra::extend(fire_raster, terra::ext(foa_lcp), snap="near")
+  return(fire_raster)
+}
+
 #Create a function to count non-NA values that can be applied to each pixel in a raster stack
 count_non_na <- function(x){
   num_non_na <- sum(!is.na(x))
@@ -587,7 +604,7 @@ options(future.globals.maxSize = +Inf) #Just remove the check by setting it to i
 
 future_options <- furrr_options(globals=c("wd", "firelists", "opt", "process_single_season", 
                                           "process_fire_season", "find_overlap_indices",
-                                          "process_overlapping_fires", 
+                                          "process_overlapping_fires", "align_and_stack_tifs", "align_raster",
                                           "handle_more_than_two_overlaps", "handle_two_or_fewer_overlaps", 
                                           "process_overlaps", "merge_tifs_w_accumulator", 
                                           "process_single_fire_season", "count_non_na"), seed=TRUE)
