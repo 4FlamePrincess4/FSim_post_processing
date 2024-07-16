@@ -150,7 +150,7 @@ find_overlap_indices <- function(overlap_matrix) {
 #Function to keep only minimum ArrivalDay values with Bryce's accumulator method
 merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_id, foa_lcp, accum_AD, accum_FL, accum_ID) {
   
- # Read the ArrivalDay and FlameLength rasters
+  # Read the ArrivalDay and FlameLength rasters
   arrival_day <- terra::rast(arrival_day_path)
   flame_length <- terra::rast(flame_length_path)
   # Set CRS to match foa_lcp
@@ -163,12 +163,9 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
   # Compare ArrivalDay values with the accumulation raster
   mask_min <- arrival_day < accum_AD | is.na(accum_AD)
   
-  # Debugging information
-  print("Debug: mask_min summary")
-  print(summary(mask_min))
-  
   # Update the accumulation raster with minimum values
   accum_AD[mask_min] <- arrival_day[mask_min]
+  #terra::plot(accum_AD, main = "Accumulated arrival days")
   
   # Set non-minimum values to NA in the current fire's ArrivalDay raster
   arrival_day[!mask_min] <- NA
@@ -176,23 +173,14 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
   # Use the adjusted ArrivalDay raster to mask the FlameLength raster
   flame_length_masked <- terra::mask(flame_length, arrival_day, maskvalue = NA)
   
-  # Debugging information
-  print("Debug: flame_length_masked summary")
-  print(summary(flame_length_masked))
-  
   # Update the accumulation FlameLength raster
   accum_FL[!is.na(flame_length_masked)] <- flame_length_masked[!is.na(flame_length_masked)]
-  
-  # Debugging information
-  print("Debug: before updating accum_ID")
-  print(summary(accum_ID))
+  #terra::plot(accum_FL, main = "Accumulated flame lengths")
   
   # Update the Fire ID raster with the current fire ID for minimum values
-  accum_ID[mask_min] <- as.numeric(fire_id)
-  
-  # Debugging information
-  print("Debug: after updating accum_ID")
-  print(summary(accum_ID))
+  accum_ID_mask <- !is.na(arrival_day)
+  accum_ID[accum_ID_mask] <- as.numeric(fire_id)
+  #terra::plot(accum_ID, main = "Accumulated fire IDs")
   
   return(list(accum_ID = accum_ID, accum_AD = accum_AD, accum_FL = accum_FL))
 }
