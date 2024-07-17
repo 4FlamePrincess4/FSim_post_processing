@@ -266,14 +266,15 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
 process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel){
   library(RSQLite)
   fires_to_delete <- list()
-  # Load the ignition database corresponding to the season part
-  con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_",
-                                                               this_season_pt[1], "_Ignitions.sqlite"))
-  # Construct the SQL query to select the ignitions based on the IDs
+  #Read in ignitions for the overlapping fire ids
   #We only need the unique ids for this
   unique_overlapping_fire_ids <- c(overlapping_fire_ids_df$fire_id1, 
                                    overlapping_fire_ids_df$fire_id2)
   unique_overlapping_fire_ids <- unique(unique_overlapping_fire_ids)
+  # Load the ignition database corresponding to the season part
+  con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_",
+                                                               this_season_pt[1], "_Ignitions.sqlite"))
+  # Construct the SQL query to select the ignitions based on the IDs
   query <- paste("SELECT * FROM ignitions WHERE fire_id IN (", 
                  toString(unique_overlapping_fire_ids),")")
   # Query the sqlite database to fetch only the ignitions that are in the overlapping id list
@@ -437,6 +438,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
   rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack, foa_lcp)
   gc()
 }
+
 
 handle_more_than_two_overlaps <- function(each_season, foa_lcp, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel, max_overlapping_fires) {
   #This function processes cases where there are more than two overlapping fires at a single pixel.
