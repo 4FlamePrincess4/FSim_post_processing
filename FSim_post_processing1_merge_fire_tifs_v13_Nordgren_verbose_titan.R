@@ -5,10 +5,13 @@ library(tidyterra)
 library(RSQLite)
 library(future)
 library(furrr)
+library(parallel)
 
 #Set the working directory to the specific outputs folder for the run
-wd <- setwd(opt$working_directory)
-wd <- setwd(opt$working_directory)
+wd <- setwd("C:/Users/lsindewald/Documents/WFSETP/FSim_Outputs/OKWEN_FOA1c_r7_full_baseline_time0")
+wd <- setwd("C:/Users/lsindewald/Documents/WFSETP/FSim_Outputs/OKWEN_FOA1c_r7_full_baseline_time0")
+
+dir.create("./SeasonFires_merged_tifs/")
 
 #########################################################################################
 # NOTE: To run this code, you need to make sure the following FSim outputs are in the   #
@@ -28,16 +31,16 @@ wd <- setwd(opt$working_directory)
 
 #STEP 1: Record run information below 
 ###############################################
-foa_run <- "FOA2c_r10"
+foa_run <- "FOA1c_r7"
 scenario <- ""
 run_timepoint <- "baseline_time0"
-foa_lcp_path <- "../../../FSim_Run_Files/okwen_foa2c_r1/_inputs/lcp/FOA2c_LCG_LF2022_FBFM40_230_120m.tif"
+foa_lcp_path <- "./_inputs/lcp/FOA1c_LCG_LF2022_FBFM40_230_120m.tif"
 number_of_seasons <- 20000
 #Use the below if you have an equal number of seasons for each part
-number_of_parts <- 8
-seasons_per_part <- c(rep(2500, number_of_parts))
+number_of_parts <- 4
+seasons_per_part <- c(rep(5000, number_of_parts))
 #Use the below alternative if you have different numbers of seasons for each part
-seasons_per_part <- c(5000, 7000, 2000, 1000, 5000)
+#seasons_per_part <- c(5000, 7000, 2000, 1000, 5000)
 
 
 #STEP 2: Combine fire lists from all four run parts
@@ -196,7 +199,7 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
 
 #Define a function to process a season with just one fire.
 process_single_fire_season <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt) {
-
+  
   print(paste0("There is only one fire in season ", each_season))
   #Read in the AD and FL rasters
   #De-comment the below when you have a scenario
@@ -204,8 +207,8 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
   #                                    this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_",
   #                                    this_season_fireIDs, ".tif")
   this_season_AD_filename <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
-                                     this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
-                                     this_season_fireIDs, ".tif")
+                                    this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
+                                    this_season_fireIDs, ".tif")
   this_season_AD_stack <- terra::rast(this_season_AD_filename)
   #Use this info to read in the flame length tif filenames for this season's fires
   #De-comment the below when you have a scenario
@@ -213,8 +216,8 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
   #                                    this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
   #                                    this_season_fireIDs, ".tif")
   this_season_FL_filename <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
-                                     this_season_foa_run, "_", this_season_pt, "_FlameLengths_FireID_",
-                                     this_season_fireIDs, ".tif")
+                                    this_season_foa_run, "_", this_season_pt, "_FlameLengths_FireID_",
+                                    this_season_fireIDs, ".tif")
   this_season_FL_stack <- terra::rast(this_season_FL_filename)
   #Create the fire ID raster
   this_season_ID_stack <- terra::rast(nrows = nrow(this_season_AD_stack), ncols = ncol(this_season_AD_stack), ext = terra::ext(this_season_AD_stack), crs = terra::crs(this_season_AD_stack), vals = NA)
@@ -574,18 +577,14 @@ start_logging("merge_tifs_captains_log.txt")
 
 #Use the below if you're on one of the Titan machines
 #Set up a cluster and using that with future_map()
-#cl <- parallel::makeCluster(32)
-#plan(cluster, workers = cl)
-
-#Use the below if you're on the Alderaan cluster
-# Set up the future plan to use the cluster
-plan(cluster, workers = 64)
+cl <- parallel::makeCluster(32)
+plan(cluster, workers = cl)
 
 # Increase serialization buffer size 
 options(future.globals.maxSize = +Inf) #Just remove the check by setting it to infinity 
 
-future_options <- furrr_options(globals=c("wd", "firelists", "process_single_season", 
-                                          "process_fire_season", "find_overlap_indices",
+future_options <- furrr_options(globals=c("wd", "firelists", "process_single_season", "foa_lcp_path","foa_run", "wd",
+                                          "process_fire_season", "find_overlap_indices", 
                                           "process_overlapping_fires", "align_and_stack_tifs", "align_raster",
                                           "handle_more_than_two_overlaps", "handle_two_or_fewer_overlaps", 
                                           "process_overlaps", "merge_tifs_w_accumulator", 
@@ -601,3 +600,6 @@ results <- future_map(
 )
 
 stop_logging()
+stopCluster(cl)
+rm(cl)
+gc()
