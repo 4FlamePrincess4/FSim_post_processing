@@ -80,7 +80,7 @@ for(j in 1:length(seasons_per_part)){
 
 #Initialize an empty vector and add it as a column to the firelists dataframe
 Part <- vector("character",nrow(firelists))
-Scenario <- rep(opt$scenario, nrow(firelists))
+Scenario <- rep(scenario, nrow(firelists))
 firelists <- cbind(firelists,Part,Scenario)
 #Sort the firelists dataframe by Season number
 firelists <- firelists[order(firelists$Season),]
@@ -238,7 +238,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
                                    overlapping_fire_ids_df$fire_id2)
   unique_overlapping_fire_ids <- unique(unique_overlapping_fire_ids)
   # Load the ignition database corresponding to the season part
-  con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_",
+  con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", foa_run, "_",
                                                                this_season_pt[1], "_Ignitions.sqlite"))
   # Construct the SQL query to select the ignitions based on the IDs
   query <- paste("SELECT * FROM ignitions WHERE fire_id IN (", 
@@ -364,7 +364,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
     this_season_fireIDs <- this_season_fireIDs[-fires_to_delete]
   }
   # Create empty accumulator rasters
-  foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
+  foa_lcp <- terra::rast(foa_lcp_path, lyrs = 1)
   foa_lcp <- terra::unwrap(foa_lcp)
   accum_ID <- terra::rast(foa_lcp)
   accum_AD <- terra::rast(foa_lcp)
@@ -408,7 +408,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
 process_fire_season <- function(each_season) {
   library(RSQLite)
   print(paste0("Processing Season ", each_season,"..."))
-  foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
+  foa_lcp <- terra::rast(foa_lcp_path, lyrs = 1)
   foa_lcp <- terra::unwrap(foa_lcp)
   #Subset the firelists by the current season
   this_season_fires <- firelists %>%
@@ -417,13 +417,13 @@ process_fire_season <- function(each_season) {
   this_season_fireIDs <- as.character(this_season_fires$FireID)
   this_season_pt <- as.character(this_season_fires$Part)
   this_season_scen <- as.character(this_season_fires$Scenario)
-  this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
+  this_season_foa_run <- rep(foa_run, length(this_season_fireIDs))
   
   #If there is one or fewer fires in the season, use the process_single_fire_season function 
   if(length(this_season_fireIDs) <= 1){
     process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt)
   } else { #Otherwise, read in the perimeters sqlite database and fetch this season's fire perimeters
-    con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_", this_season_pt[1], "_Perimeters.sqlite"))
+    con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", foa_run, "_", this_season_pt[1], "_Perimeters.sqlite"))
     query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
     season_fire_perims <- RSQLite::dbGetQuery(con, query1)
     ref_sys <- RSQLite::dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
