@@ -5,6 +5,8 @@ library(tidyterra)
 library(RSQLite)
 library(future)
 library(furrr)
+library(parallel)
+
 #Set the working directory to the specific outputs folder for the run
 wd <- setwd("C:/Users/lsindewald/Documents/WFSETP/FSim_Outputs/OKWEN_FOA1c_r7_full_baseline_time0")
 wd <- setwd("C:/Users/lsindewald/Documents/WFSETP/FSim_Outputs/OKWEN_FOA1c_r7_full_baseline_time0")
