@@ -386,7 +386,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
         } #End of if-else scenario where the ignition for fire 1 is inside of the fire 2 perimeter and the
         # ignition date is later than the fire 2 arrival day, so fire 1 would not have occurred.
       } else {#End of scenario where the AD value at the ignition point is not NA.
-        print(paste0("No valid arrival_day value at the ignition point's location. The coordinates for fire ", second_ID, " are: ", second_ig_coordinates, "."))
+        print(paste0("No valid arrival_day value at the ignition point's location. The coordinates for fire ", second_ID, " are: ", second_ig_coords, "."))
         print(paste0("Ignition fire ID = ", second_ID, ". Perimeter fire ID = ", first_ID, "."))
       } #End of if-else scenario where the AD value at the ignition point is NA.
     } else if(!(first_ignition_in_second_perim) && !(second_ignition_in_first_perim)){ #End of scenario where fire 2 ignition is inside of fire 1 perimeter.
