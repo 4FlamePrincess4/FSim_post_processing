@@ -288,7 +288,6 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
     
     # Check whether the first ignition falls in the second perimeter
     first_ignition_in_second_perim <- sf::st_intersects(first_ig, second_perim, sparse = FALSE)
-    print(first_ignition_in_second_perim)
     # Check whether the second ignition falls in the first perimeter
     second_ignition_in_first_perim <- sf::st_intersects(second_ig, first_perim, sparse = FALSE)
     #If the first ignition is inside the second perimeter
@@ -300,19 +299,19 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
       this_perim_AD_raster <- terra::rast(paste0(wd, "/", this_season_foa_run, "_", this_season_pt, "_ArrivalDays/",
                                                  this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_", second_ID, ".tif"))
       second_fire_AD <- this_perim_AD_raster[[second_index]]
-      print(second_fire_AD)
+      print(paste0("The arrival day for fire ", second_ID, " is ", second_fire_AD, "."))
       second_fire_AD_df <- terra::extract(second_fire_AD, matrix(first_ig_coords, ncol=2))
       # Extract the value itself from the resulting dataframe
       second_fire_AD_value <- second_fire_AD_df[1,1]
       # Compare the start_day with the arrival_day_value
       if (!is.na(second_fire_AD_value)) {
         if (first_ig$start_day <= second_fire_AD_value) {
-          print("The ignition date for fire 1 is less than or equal to the arrival day value for fire 2 at the ignition point's location.")
+          print(paste0("The ignition date for fire ", first_ID, " is ", first_ig$start_day, ", which is less than or equal to the arrival day value for fire ", second_ID, " at the ignition point's location."))
           print("We will keep both fires.")
         } else { #End of if-else scenario where the first fire ignition is within the second fire perim
           # & the first fire would have prevented the second fire from spreading. #End of if-else scenario where the ignition date of fire 1 is less than or equal to the AD of fire 2.
-          print("The ignition date for fire 1 is greater than the arrival day value for fire 2 at the ignition point's location.")
-          print("Fire 1 should not have occurred and will be deleted.")
+          print(paste0("The ignition date for fire ", first_ID, " is ", first_ig$start_day, ", which is greater than the arrival day value for fire ", second_ID, " at the ignition point's location."))
+          print(paste0("Fire ", first_ID, " should not have occurred and will be deleted."))
           #Store the ID in a list to delete the FL and AD rasters from the stacks just before merging.
           # Wait to do this to avoid messing up the stack indexing.
           fires_to_delete <- append(fires_to_delete, first_index)
@@ -320,7 +319,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
         # fire 1 should not have ignited.
       } else { #End of scenario where the second fire AD value is not NA.
         print("No valid arrival_day value at the ignition point's location.")
-        print(paste0("Ignition fire ID = ", first_ID, ". Perimeter fire ID = ", second_ID, "."))
+        print(paste0("Ignition fire ID = ", first_ID, ". Perimeter fire ID = ", second_ID, ". The ignition point location is ", first_ig_coordinates))
       } #End of scenario where the second fire AD value is NA.
     } else if(second_ignition_in_first_perim){ #End of if-else scenario where the first fire ignition is inside of the second fire perimeter.
       #Check whether the ignition day is earlier than the arrival day at the pixel of the perimeter
@@ -336,20 +335,20 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
       # Compare the start_day with the arrival_day_value
       if (!is.na(first_fire_AD_value)) {
         if (second_ig$start_day <= first_fire_AD_value) {
-          print("The ignition date for fire 2 is less than or equal to the arrival day value for fire 1 at the ignition point's location.")
+          print(paste0("The ignition date for fire ", second_ID, " is ", second_ig$start_day, " which is less than or equal to the arrival day value for fire ", first_ID, " at the ignition point's location."))
           print("We will keep both fires.")
         } else { #End of if-else scenario where the fire 2 ignition is within the fire 1 perim
           # & fire 2 would have prevented fire 1 from spreading.
           #End of if-else scenario where the fire 2 ignition is earlier than the fire 1 AD value.
-          print("The ignition date for fire 2 is greater than the arrival day value for fire 1 at the ignition point's location.")
-          print("Fire 2 should not have occurred and will be deleted.")
+          print(paste0("The ignition date for fire ", second_ID, " is greater than the arrival day value for fire ", first_ID, " at the ignition point's location."))
+          print(paste0("Fire ", second_ID, " should not have occurred and will be deleted."))
           #Store the ID in a list to delete the FL and AD rasters from the stacks just before merging.
           # Wait to do this to avoid messing up the stack indexing.
           fires_to_delete <- append(fires_to_delete, second_index)
         } #End of if-else scenario where the ignition for fire 1 is inside of the fire 2 perimeter and the
         # ignition date is later than the fire 2 arrival day, so fire 1 would not have occurred.
       } else {#End of scenario where the AD value at the ignition point is not NA.
-        print("No valid arrival_day value at the ignition point's location.")
+        print(paste0("No valid arrival_day value at the ignition point's location. The coordinates for fire ", second_ID, " are: ", second_ig_coordinates, "."))
         print(paste0("Ignition fire ID = ", second_ID, ". Perimeter fire ID = ", first_ID, "."))
       } #End of if-else scenario where the AD value at the ignition point is NA.
     } else if(!(first_ignition_in_second_perim) && !(second_ignition_in_first_perim)){ #End of scenario where fire 2 ignition is inside of fire 1 perimeter.
