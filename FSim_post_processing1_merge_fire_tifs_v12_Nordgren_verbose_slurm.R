@@ -263,8 +263,7 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
   gc()
 }
 
-process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, 
-                             season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel){
+process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel){
   library(RSQLite)
   fires_to_delete <- list()
   #Read in ignitions for the overlapping fire ids
@@ -481,7 +480,7 @@ handle_more_than_two_overlaps <- function(each_season, this_season_fireIDs, this
 }
 
 
-handle_two_or_fewer_overlaps <- function(each_season, this_season_fireIDs, this_season_pt, this_season_AD_stack, this_season_FL_stack, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel, max_overlapping_fires) {
+handle_two_or_fewer_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel, max_overlapping_fires) {
   #If there are only two overlaps
   print("There are at most two fires overlapping at any given pixel.")
   #Print the overlapping fire IDs
