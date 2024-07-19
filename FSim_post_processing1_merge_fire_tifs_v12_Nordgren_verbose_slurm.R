@@ -192,7 +192,6 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
   
   # Update the accumulation raster with minimum values
   accum_AD[mask_min] <- arrival_day[mask_min]
-  #terra::plot(accum_AD, main = "Accumulated arrival days")
   
   # Set non-minimum values to NA in the current fire's ArrivalDay raster
   arrival_day[!mask_min] <- NA
@@ -202,12 +201,10 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
   
   # Update the accumulation FlameLength raster
   accum_FL[!is.na(flame_length_masked)] <- flame_length_masked[!is.na(flame_length_masked)]
-  #terra::plot(accum_FL, main = "Accumulated flame lengths")
   
   # Update the Fire ID raster with the current fire ID for minimum values
   accum_ID_mask <- !is.na(arrival_day)
   accum_ID[accum_ID_mask] <- as.numeric(fire_id)
-  #terra::plot(accum_ID, main = "Accumulated fire IDs")
   
   return(list(accum_ID = accum_ID, accum_AD = accum_AD, accum_FL = accum_FL))
 }
@@ -256,35 +253,29 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
   #Combine the fire ID stack with the AD & FL stacks. (Each "stack" actually only has one layer because there is only one fire.)
   season_fires_raster_stack <- c(this_season_ID_stack, this_season_AD_stack, this_season_FL_stack)
   names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
-  #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
   #Write the resulting 3-band raster stack.
   terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
   rm(this_season_AD_stack, this_season_FL_stack, this_season_ID_stack, season_fires_raster_stack)
   gc()
 }
 
-process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel){
+process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df){
   library(RSQLite)
   fires_to_delete <- list()
   #Read in ignitions for the overlapping fire ids
   #We only need the unique ids for this
-  print(overlapping_fire_ids_df)
   unique_overlapping_fire_ids <- c(overlapping_fire_ids_df$fire_id1, 
                                    overlapping_fire_ids_df$fire_id2)
   unique_overlapping_fire_ids <- unique(unique_overlapping_fire_ids)
-  print(unique_overlapping_fire_ids)
   # Load the ignition database corresponding to the season part
   con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_",
                                                                this_season_pt[1], "_Ignitions.sqlite"))
-  print("Debug statement: We connected to the RSQLite database.")
   tables <- dbListTables(con)[ dbListTables(con) !="sqlite_sequence"]
-  print(paste0(tables))
   # Construct the SQL query to select the ignitions based on the IDs
   query <- paste("SELECT * FROM ignitions WHERE fire_id IN (", 
                  toString(unique_overlapping_fire_ids),")")
   # Query the sqlite database to fetch only the ignitions that are in the overlapping id list
   overlapping_ig <- RSQLite::dbGetQuery(con, query)
-  print(paste0(overlapping_ig))
   #Get the reference system (which is the same for all three)
   ref_sys <- RSQLite::dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
   # Close the database connection
@@ -313,17 +304,6 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
       dplyr::filter(fire_id == first_ID)
     second_perim <- season_fire_perims %>%
       dplyr::filter(fire_id == second_ID)
-    # # Plot these as a sanity check
-    # overlap_case_plot <- ggplot2::ggplot()+
-    #   ggplot2::geom_sf(data=first_perim, aes(color = "Fire 1 Perim"))+
-    #   ggplot2::geom_sf(data=first_ig, aes(color = "Fire 1 Ig"))+
-    #   ggplot2::geom_sf(data=second_perim, aes(color = "Fire 2 Perim"))+
-    #   ggplot2::geom_sf(data=second_ig, aes(color = "Fire 2 Ig"))+
-    #   ggplot2::scale_color_manual(values=c("Fire 1 Perim" = "black","Fire 1 Ig" = "red",
-    #                               "Fire 2 Perim" = "blue","Fire 2 Ig" = "green"))+
-    #   ggplot2::theme_minimal()
-    # print(overlap_case_plot)
-    
     # Check whether the first ignition falls in the second perimeter
     first_ignition_in_second_perim <- sf::st_intersects(first_ig, second_perim, sparse = FALSE)
     # Check whether the second ignition falls in the first perimeter
@@ -396,7 +376,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
       print("We are assuming that keeping only the earliest arrival day value will take care of overburn.")
     } #End of the if-else situation where the ignitions don't overlap with the polygons of overlapping fires.
   } #End of the for loop to edit each pair of fires that overlap.
-  
+  rm(overlapping_fire_indices_df, overlapping_fire_ids_df, overlapping_ig, season_fire_perims)
   #Delete the arrival day and flame length tifs of fires that shouldn't have happened
   if(length(fires_to_delete) > 0){
     fires_to_delete <- unlist(fires_to_delete)
@@ -437,7 +417,6 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
   }
   season_fires_raster_stack <- c(accum_ID, accum_AD, accum_FL)
   names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
-  #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
   #Write the resulting 3-band raster stack.
   terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
   rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack, foa_lcp)
@@ -476,21 +455,21 @@ handle_more_than_two_overlaps <- function(each_season, this_season_fireIDs, this
   excess_fires <- unique(excess_overlap_fires)
   print(paste("These are the excess fires:", paste(excess_fires, collapse = ", ")))
   #Now process the overlapping fires
-  process_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel)
+  process_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df)
 }
 
 
-handle_two_or_fewer_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel, max_overlapping_fires) {
+handle_two_or_fewer_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df) {
   #If there are only two overlaps
   print("There are at most two fires overlapping at any given pixel.")
   #Print the overlapping fire IDs
   print(paste0("These are the cases: "))
   print(overlapping_fire_ids_df)
   #Now process the overlapping fires
-  process_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel)
+  process_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df)
 }
 
-process_overlapping_fires <- function(each_season, foa_lcp, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices) {
+process_overlapping_fires <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices) {
   #Create a dataframe with overlapping fire IDs
   overlapping_fire_ids_df <- do.call(rbind, lapply(overlap_indices, function(pair) {
     data.frame(fire_id1 = season_fire_perims$fire_id[pair[1]], fire_id2 = season_fire_perims$fire_id[pair[2]])
@@ -508,16 +487,19 @@ process_overlapping_fires <- function(each_season, foa_lcp, this_season_fireIDs,
                                      this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
                                      this_season_fireIDs, ".tif")
   print(paste0("Reading in Arrival Day tifs for Season ", each_season,"..."))
+  foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
+  foa_lcp <- terra::unwrap(foa_lcp)
   this_season_AD_stack <- terra::rast(lapply(this_season_AD_filenames, align_and_stack_tifs, foa_lcp = foa_lcp))
   print("Checking the number of non-NA values (# of fires) per pixel...")
   num_non_na_per_pixel <- terra::app(this_season_AD_stack, fun=count_non_na)
-  rm(this_season_AD_stack)
+  rm(this_season_AD_stack, foa_lcp, this_season_AD_filenames)
   max_overlapping_fires <- terra::global(num_non_na_per_pixel, max, na.rm=TRUE)[[1]]
   #If there are more than two overlapping fires, use the handle_more_than_two_overlaps function.
   if(max_overlapping_fires > 2) {
     handle_more_than_two_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel, max_overlapping_fires)
   } else { #If there are only two fires at any given pixel, use the handle_two_or_fewer_overlaps function.
-    handle_two_or_fewer_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel, max_overlapping_fires)
+    rm(num_non_na_per_pixel, max_overlapping_fires)
+    handle_two_or_fewer_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df)
   }
 }
 
@@ -547,8 +529,6 @@ process_fire_season <- function(each_season) {
     #Convert these perimeters to an sf object
     season_fire_perims$GEOMETRY <- sf::st_as_sfc(structure(as.list(season_fire_perims$GEOMETRY),class="blob"), crs = ref_sys$srtext)
     season_fire_perims <- sf::st_as_sf(season_fire_perims)
-    #Plot to confirm they loaded correctly. There are multiple variables, so just plot the first (the object ID).
-    #plot(season_fire_perims, col = "black", max.plot = 1)
     
     #Check whether any of the fire perimeters for this season overlap. The result is a matrix of logical outcomes.
     overlap_matrix <- sf::st_intersects(season_fire_perims, sparse = FALSE)
@@ -590,13 +570,12 @@ process_fire_season <- function(each_season) {
       }
       season_fires_raster_stack <- c(accum_ID, accum_AD, accum_FL)
       names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
-      #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
       #Write the resulting 3-band raster stack.
       terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
       rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack, foa_lcp)
       gc()
     } else if(length(overlap_indices) >= 1){ #If there's at least one case of overlap, use the function process_overlapping_fires.
-      process_overlapping_fires(each_season, foa_lcp, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices)
+      process_overlapping_fires(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices)
     }
   }
 }
@@ -616,14 +595,9 @@ unique_seasons <- unique_seasons[unique_seasons >= opt$first_season & unique_sea
 merge_log_filename <- paste0("merge_tifs_captains_log_", opt$merge_fires_part, ".txt")
 start_logging(merge_log_filename)
 
-#Use the below if you're on one of the Titan machines
-#Set up a cluster and using that with future_map()
-#cl <- parallel::makeCluster(32)
-#plan(cluster, workers = cl)
-
 #Use the below if you're on the Alderaan cluster
 # Set up the future plan to use the cluster
-plan(cluster, workers = 64)
+plan(cluster, workers = 48, timeout = 600)
 
 # Increase serialization buffer size 
 options(future.globals.maxSize = +Inf) #Just remove the check by setting it to infinity 
