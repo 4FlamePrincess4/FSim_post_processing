@@ -239,9 +239,13 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
   gc()
 }
 
-process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel){
+process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df){
   library(RSQLite)
   fires_to_delete <- list()
+  #Read in ignitions for the overlapping fire ids
+  unique_overlapping_fire_ids <- c(overlapping_fire_ids_df$fire_id1,
+                                   overlapping_fire_ids_df$fire_id2)
+  unique_overlapping_fire_ids <- unique(unique_overlapping_fire_ids)
   # Load the ignition database corresponding to the season part
   con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", foa_run, "_",
                                                                this_season_pt[1], "_Ignitions.sqlite"))
@@ -420,6 +424,8 @@ handle_more_than_two_overlaps <- function(each_season, this_season_fireIDs, this
                                      this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
                                      this_season_fireIDs, ".tif")
   print(paste0("Reading in Arrival Day tifs for Season ", each_season,"..."))
+  foa_lcp <- terra::rast(foa_lcp_path, lyrs = 1)
+  foa_lcp <- terra::unwrap(foa_lcp)
   this_season_AD_stack <- terra::rast(lapply(this_season_AD_filenames, align_and_stack_tifs, foa_lcp = foa_lcp))
   #Get the fire IDs for the fires that overlap at these locations
   for(i in seq_along(cells_over_two_overlap)){
@@ -433,23 +439,23 @@ handle_more_than_two_overlaps <- function(each_season, this_season_fireIDs, this
     excess_overlap_fires <- c(excess_overlap_fires, excess_overlap_fireids)
     non_na_indices_list[[i]] <- non_na_indices
   }
-  rm(this_season_AD_stack)
+  rm(this_season_AD_stack, foa_lcp)
   #Simplify to the unique IDs for these fires and report out
   excess_fires <- unique(excess_overlap_fires)
   print(paste("These are the excess fires:", paste(excess_fires, collapse = ", ")))
   #Now process the overlapping fires
-  process_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel)
+  process_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df)
 }
 
 
-handle_two_or_fewer_overlaps <- function(each_season, this_season_fireIDs, this_season_pt, this_season_AD_stack, this_season_FL_stack, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel, max_overlapping_fires) {
+handle_two_or_fewer_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df) {
   #If there are only two overlaps
   print("There are at most two fires overlapping at any given pixel.")
   #Print the overlapping fire IDs
   print(paste0("These are the cases: "))
   print(overlapping_fire_ids_df)
   #Now process the overlapping fires
-  process_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel)
+  process_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df)
 }
 
 process_overlapping_fires <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices) {
@@ -468,16 +474,18 @@ process_overlapping_fires <- function(each_season, this_season_fireIDs, this_sea
                                      this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
                                      this_season_fireIDs, ".tif")
   print(paste0("Reading in Arrival Day tifs for Season ", each_season,"..."))
+  foa_lcp <- terra::rast(foa_lcp_path, lyrs = 1)
+  foa_lcp <- terra::unwrap(foa_lcp)
   this_season_AD_stack <- terra::rast(lapply(this_season_AD_filenames, align_and_stack_tifs, foa_lcp = foa_lcp))
   print("Checking the number of non-NA values (# of fires) per pixel...")
   num_non_na_per_pixel <- terra::app(this_season_AD_stack, fun=count_non_na)
-  rm(this_season_AD_stack)
+  rm(this_season_AD_stack, foa_lcp)
   max_overlapping_fires <- terra::global(num_non_na_per_pixel, max, na.rm=TRUE)[[1]]
   #If there are more than two overlapping fires, use the handle_more_than_two_overlaps function.
   if(max_overlapping_fires > 2) {
     handle_more_than_two_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel, max_overlapping_fires)
   } else { #If there are only two fires at any given pixel, use the handle_two_or_fewer_overlaps function.
-    handle_two_or_fewer_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel, max_overlapping_fires)
+    handle_two_or_fewer_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df)
   }
 }
 
@@ -576,7 +584,7 @@ start_logging("merge_tifs_captains_log.txt")
 
 #Use the below if you're on one of the Titan machines
 #Set up a cluster and using that with future_map()
-cl <- parallel::makeCluster(32)
+cl <- parallel::makeCluster(24)
 plan(cluster, workers = cl)
 
 # Increase serialization buffer size 
