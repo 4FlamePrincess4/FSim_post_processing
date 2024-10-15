@@ -439,21 +439,21 @@ handle_more_than_two_overlaps <- function(each_season, this_season_fireIDs, this
   excess_fires <- unique(excess_overlap_fires)
   print(paste("These are the excess fires:", paste(excess_fires, collapse = ", ")))
   #Now process the overlapping fires
-  process_overlaps(each_season, this_season_fireIDs, this_season_scen, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df)
+  process_overlaps(each_season, this_season_fireIDs, , this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df)
 }
 
 
-handle_two_or_fewer_overlaps <- function(each_season, this_season_fireIDs, this_season_scen, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df) {
+handle_two_or_fewer_overlaps <- function(each_season, this_season_fireIDs, , this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df) {
   #If there are only two overlaps
   print("There are at most two fires overlapping at any given pixel.")
   #Print the overlapping fire IDs
   print(paste0("These are the cases: "))
   print(overlapping_fire_ids_df)
   #Now process the overlapping fires
-  process_overlaps(each_season, this_season_fireIDs, this_season_scen, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df)
+  process_overlaps(each_season, this_season_fireIDs, , this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df)
 }
 
-process_overlapping_fires <- function(each_season, this_season_fireIDs, this_season_scen, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices) {
+process_overlapping_fires <- function(each_season, this_season_fireIDs, , this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices) {
   #Create a dataframe with overlapping fire IDs
   overlapping_fire_ids_df <- do.call(rbind, lapply(overlap_indices, function(pair) {
     data.frame(fire_id1 = season_fire_perims$fire_id[pair[1]], fire_id2 = season_fire_perims$fire_id[pair[2]])
@@ -467,8 +467,8 @@ process_overlapping_fires <- function(each_season, this_season_fireIDs, this_sea
   overlapping_fire_indices_df$fire_index1 <- as.numeric(overlapping_fire_indices_df$fire_index1)
   overlapping_fire_indices_df$fire_index2 <- as.numeric(overlapping_fire_indices_df$fire_index2)
   #Check how many non-na values there are per pixel to determine which overlap function to apply.
-  this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_ArrivalDays/",
-                                     this_season_foa_run, "_", this_season_pt, "_", this_season_scen,"_ArrivalDays_FireID_",
+  this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", ,"_ArrivalDays/",
+                                     this_season_foa_run, "_", this_season_pt, "_", ,"_ArrivalDays_FireID_",
                                      this_season_fireIDs, ".tif")
   print(paste0("Reading in Arrival Day tifs for Season ", each_season,"..."))
   foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
@@ -480,10 +480,10 @@ process_overlapping_fires <- function(each_season, this_season_fireIDs, this_sea
   max_overlapping_fires <- terra::global(num_non_na_per_pixel, max, na.rm=TRUE)[[1]]
   #If there are more than two overlapping fires, use the handle_more_than_two_overlaps function.
   if(max_overlapping_fires > 2) {
-    handle_more_than_two_overlaps(each_season, this_season_fireIDs, this_season_scen, this_season_scen, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel, max_overlapping_fires)
+    handle_more_than_two_overlaps(each_season, this_season_fireIDs, , this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df, num_non_na_per_pixel, max_overlapping_fires)
   } else { #If there are only two fires at any given pixel, use the handle_two_or_fewer_overlaps function.
     rm(num_non_na_per_pixel, max_overlapping_fires)
-    handle_two_or_fewer_overlaps(each_season, this_season_fireIDs, this_season_scen, this_season_scen, this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df)
+    handle_two_or_fewer_overlaps(each_season, this_season_fireIDs, , this_season_foa_run, this_season_pt, season_fire_perims, ref_sys, overlap_indices, overlapping_fire_ids_df, overlapping_fire_indices_df)
   }
 }
 
@@ -498,12 +498,12 @@ process_fire_season <- function(each_season) {
   #Fetch vectors of other run information
   this_season_fireIDs <- as.character(this_season_fires$FireID)
   this_season_pt <- as.character(this_season_fires$Part)
-  this_season_scen <- as.character(this_season_fires$Scenario)
+   <- as.character(this_season_fires$Scenario)
   this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
   
   #If there is one or fewer fires in the season, use the process_single_fire_season function 
   if(length(this_season_fireIDs) <= 1){
-    process_single_fire_season(each_season, this_season_fireIDs, this_season_scen, this_season_foa_run, this_season_pt)
+    process_single_fire_season(each_season, this_season_fireIDs, , this_season_foa_run, this_season_pt)
   } else { #Otherwise, read in the perimeters sqlite database and fetch this season's fire perimeters
     con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_", this_season_pt[1], "_Perimeters.sqlite"))
     query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
