@@ -498,7 +498,7 @@ process_fire_season <- function(each_season) {
   #Fetch vectors of other run information
   this_season_fireIDs <- as.character(this_season_fires$FireID)
   this_season_pt <- as.character(this_season_fires$Part)
-   <- as.character(this_season_fires$Scenario)
+  this_season_scen <- as.character(this_season_fires$Scenario)
   this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
   
   #If there is one or fewer fires in the season, use the process_single_fire_season function 
