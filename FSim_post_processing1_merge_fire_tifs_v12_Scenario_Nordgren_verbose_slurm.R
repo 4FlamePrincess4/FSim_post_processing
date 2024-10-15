@@ -223,12 +223,12 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
 
   print(paste0("There is only one fire in season ", each_season))
   #Read in the AD and FL rasters
-  this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
+  this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_ArrivalDays/",
                                      this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_",
                                      this_season_fireIDs, ".tif")
   this_season_AD_stack <- terra::rast(this_season_AD_filenames)
   #Use this info to read in the flame length tif filenames for this season's fires
-  this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
+  this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_FlameLengths/",
                                      this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
                                      this_season_fireIDs, ".tif")
   this_season_FL_stack <- terra::rast(this_season_FL_filenames)
@@ -385,10 +385,10 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
   terra::values(accum_AD) <- NA
   terra::values(accum_FL) <- NA
   # Create lists of the file names for the season
-  this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
+  this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_ArrivalDays/",
                                      this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_",
                                      this_season_fireIDs, ".tif")
-  this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
+  this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_FlameLengths/",
                                      this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
                                      this_season_fireIDs, ".tif")
   # Read in each fire and update the accumulators
@@ -415,8 +415,8 @@ handle_more_than_two_overlaps <- function(each_season, this_season_fireIDs, this
   cells_over_two_overlap <- which(terra::values(num_non_na_per_pixel) > 2)
   excess_overlap_fires <- c()
   non_na_indices_list <- list()
-  this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
-                                     this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
+  this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_ArrivalDays/",
+                                     this_season_foa_run, "_", this_season_pt,"_", this_season_scen, "_ArrivalDays_FireID_",
                                      this_season_fireIDs, ".tif")
   print(paste0("Reading in Arrival Day tifs for Season ", each_season,"..."))
   foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
@@ -467,8 +467,8 @@ process_overlapping_fires <- function(each_season, this_season_fireIDs, this_sea
   overlapping_fire_indices_df$fire_index1 <- as.numeric(overlapping_fire_indices_df$fire_index1)
   overlapping_fire_indices_df$fire_index2 <- as.numeric(overlapping_fire_indices_df$fire_index2)
   #Check how many non-na values there are per pixel to determine which overlap function to apply.
-  this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
-                                     this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
+  this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_ArrivalDays/",
+                                     this_season_foa_run, "_", this_season_pt, "_", this_season_scen,"_ArrivalDays_FireID_",
                                      this_season_fireIDs, ".tif")
   print(paste0("Reading in Arrival Day tifs for Season ", each_season,"..."))
   foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
@@ -530,14 +530,11 @@ process_fire_season <- function(each_season) {
       terra::values(accum_AD) <- NA
       terra::values(accum_FL) <- NA
       # Create lists of the file names for the season
-      this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
+      this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_ArrivalDays/",
                                          this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_",
                                          this_season_fireIDs, ".tif")
-      this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
+      this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_FlameLengths/",
                                          this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
-                                         this_season_fireIDs, ".tif")
-      this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
-                                         this_season_foa_run, "_", this_season_pt, "_FlameLengths_FireID_",
                                          this_season_fireIDs, ".tif")
       # Read in each fire and update the accumulators
       for(fire in 1:length(this_season_AD_filenames)){
