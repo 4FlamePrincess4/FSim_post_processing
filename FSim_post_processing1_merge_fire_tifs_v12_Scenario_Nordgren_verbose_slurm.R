@@ -246,7 +246,7 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
   season_fires_raster_stack <- c(this_season_ID_stack, this_season_AD_stack, this_season_FL_stack)
   names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
   #Write the resulting 3-band raster stack.
-  terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", this_season_scen[1], "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
+  terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
   rm(this_season_AD_stack, this_season_FL_stack, this_season_ID_stack, season_fires_raster_stack)
   gc()
 }
@@ -402,7 +402,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_scen,
   season_fires_raster_stack <- c(accum_ID, accum_AD, accum_FL)
   names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
   #Write the resulting 3-band raster stack.
-  terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", this_season_scen[1], "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
+  terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
   rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack, foa_lcp)
   gc()
 }
@@ -547,7 +547,7 @@ process_fire_season <- function(each_season) {
       season_fires_raster_stack <- c(accum_ID, accum_AD, accum_FL)
       names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
       #Write the resulting 3-band raster stack.
-      terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", this_season_scen[1], "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
+      terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
       rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack, foa_lcp)
       gc()
     } else if(length(overlap_indices) >= 1){ #If there's at least one case of overlap, use the function process_overlapping_fires.
