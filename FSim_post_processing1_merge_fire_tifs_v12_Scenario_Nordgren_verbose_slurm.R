@@ -261,7 +261,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_scen,
   unique_overlapping_fire_ids <- unique(unique_overlapping_fire_ids)
   # Load the ignition database corresponding to the season part
   con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_",
-                                                               this_season_pt[1], "_", this_season_scen[1] "_Ignitions.sqlite"))
+                                                               this_season_pt[1], "_", this_season_scen[1], "_Ignitions.sqlite"))
   tables <- dbListTables(con)[ dbListTables(con) !="sqlite_sequence"]
   # Construct the SQL query to select the ignitions based on the IDs
   query <- paste("SELECT * FROM ignitions WHERE fire_id IN (", 
