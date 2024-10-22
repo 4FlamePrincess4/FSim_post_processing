@@ -568,7 +568,7 @@ unique_seasons <- unique(firelists$Season)
 unique_seasons <- unique_seasons[unique_seasons >= opt$first_season & unique_seasons <= opt$last_season]
 
 # Set up logger
-merge_log_filename <- paste0("merge_tifs_captains_log_", opt$merge_fires_part, "_", opt$scenario ".txt")
+merge_log_filename <- paste0("merge_tifs_captains_log_", opt$merge_fires_part, "_", opt$scenario, ".txt")
 start_logging(merge_log_filename)
 
 #Use the below if you're on the Alderaan cluster
