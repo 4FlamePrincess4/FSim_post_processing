@@ -597,7 +597,7 @@ start_logging(merge_log_filename)
 
 #Use the below if you're on the Alderaan cluster
 # Set up the future plan to use the cluster
-plan(cluster, workers = 40, timeout = 600)
+plan(cluster, workers = 36, timeout = 600)
 
 # Increase serialization buffer size 
 options(future.globals.maxSize = +Inf) #Just remove the check by setting it to infinity 
