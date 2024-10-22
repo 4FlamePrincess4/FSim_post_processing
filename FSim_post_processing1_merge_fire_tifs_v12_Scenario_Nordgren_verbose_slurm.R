@@ -568,12 +568,12 @@ unique_seasons <- unique(firelists$Season)
 unique_seasons <- unique_seasons[unique_seasons >= opt$first_season & unique_seasons <= opt$last_season]
 
 # Set up logger
-merge_log_filename <- paste0("merge_tifs_captains_log_", opt$merge_fires_part, ".txt")
+merge_log_filename <- paste0("merge_tifs_captains_log_", opt$merge_fires_part, "_", opt$scenario ".txt")
 start_logging(merge_log_filename)
 
 #Use the below if you're on the Alderaan cluster
 # Set up the future plan to use the cluster
-plan(cluster, workers = 48, timeout = 600)
+plan(cluster, workers = 36, timeout = 600)
 
 # Increase serialization buffer size 
 options(future.globals.maxSize = +Inf) #Just remove the check by setting it to infinity 
