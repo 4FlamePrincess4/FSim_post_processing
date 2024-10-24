@@ -207,7 +207,7 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
 ########################################################################################################################
 
 #Define a function to process a season with just one fire.
-process_single_fire_season <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, this_season_scen,) {
+process_single_fire_season <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, this_season_scen) {
 
   print(paste0("There is only one fire in season ", each_season))
   #Read in the AD and FL rasters
