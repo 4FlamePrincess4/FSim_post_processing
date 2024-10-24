@@ -317,7 +317,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
       first_ig_coords <- sf::st_coordinates(first_ig)
       # Extract the arrival day value at the ignition point location
       this_perim_AD_raster <- terra::rast(paste0(wd, "/", this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays/",
-                                                 this_season_foa_run, "_", this_season_pt, "_", this_season_scen", "_ArrivalDays_FireID_", second_ID, ".tif"))
+                                                 this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_", second_ID, ".tif"))
       second_fire_AD <- this_perim_AD_raster[[second_index]]
       print(paste0("The arrival day for fire ", second_ID, " is ", second_fire_AD, "."))
       second_fire_AD_df <- terra::extract(second_fire_AD, matrix(first_ig_coords, ncol=2))
