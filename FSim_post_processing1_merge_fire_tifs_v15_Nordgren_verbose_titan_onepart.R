@@ -10,8 +10,8 @@ library(parallel)
 #Set the working directory to the specific outputs folder for the run (wherever your FireSizeList.csv file lives).
 #I have this twice here because I've run into a weird bug where the first time I try to set the working directory
 # and assign it to a variable at the same time, it doesn't work. The second time it works, always.
-wd <- setwd("C:/Users/lsindewald/Documents/WFSETP/FSim_Outputs/OKWEN_FOA1c_r7_full_baseline_time0")
-wd <- setwd("C:/Users/lsindewald/Documents/WFSETP/FSim_Outputs/OKWEN_FOA1c_r7_full_baseline_time0")
+setwd("C:/Users/lsindewald/Documents/WFSETP/FSim_Outputs/OKWEN_FOA1c_r7_full_baseline_time0")
+wd <- getwd()
 
 dir.create("./SeasonFires_merged_tifs/")
 
