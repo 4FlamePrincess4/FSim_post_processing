@@ -416,6 +416,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
     accum_AD <- result$accum_AD
     accum_FL <- result$accum_FL
   }
+  print(paste0("Accumulated Fire IDs after merging for season ", each_season, ": ", unique(na.omit(values(accum_ID)))))
   season_fires_raster_stack <- c(accum_ID, accum_AD, accum_FL)
   names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
   #Write the resulting 3-band raster stack.
@@ -517,6 +518,7 @@ process_fire_season <- function(each_season) {
   this_season_pt <- as.character(this_season_fires$Part)
   this_season_scen <- as.character(this_season_fires$Scenario)
   this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
+  print(paste0("Unique Fire IDs for season ", each_season, ": ", this_season_fireIDs))
   
   #If there is one or fewer fires in the season, use the process_single_fire_season function 
   if(length(this_season_fireIDs) <= 1){
@@ -554,6 +556,7 @@ process_fire_season <- function(each_season) {
       this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
                                          this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
                                          this_season_fireIDs, ".tif")
+      print(this_season_AD_filenames)
       #De-comment the below when you have a scenario
       # this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
       #                                    this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
@@ -561,6 +564,7 @@ process_fire_season <- function(each_season) {
       this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
                                          this_season_foa_run, "_", this_season_pt, "_FlameLengths_FireID_",
                                          this_season_fireIDs, ".tif")
+      print(this_season_FL_filenames)
       # Read in each fire and update the accumulators
       for(fire in 1:length(this_season_AD_filenames)){
         result <- merge_tifs_w_accumulator(this_season_AD_filenames[fire], this_season_FL_filenames[fire],
@@ -569,6 +573,7 @@ process_fire_season <- function(each_season) {
         accum_AD <- result$accum_AD
         accum_FL <- result$accum_FL
       }
+      print(paste0("Accumulated Fire IDs after merging for season ", each_season, ": ", unique(na.omit(values(accum_ID)))))
       season_fires_raster_stack <- c(accum_ID, accum_AD, accum_FL)
       names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
       #Write the resulting 3-band raster stack.
