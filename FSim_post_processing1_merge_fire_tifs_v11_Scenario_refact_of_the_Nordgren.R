@@ -501,6 +501,7 @@ process_single_season <- function(each_season) {
 
 unique_seasons <- unique(firelists$Season)
 unique_seasons <- unique_seasons[unique_seasons >= opt$first_season & unique_seasons <= opt$last_season]
+print(paste("Processing seasons:", paste(unique_seasons, collapse = ", ")))
 
 # Set up logger
 merge_log_filename <- paste0("merge_tifs_captains_log_", opt$merge_fires_part, ".txt")
@@ -529,7 +530,13 @@ future_options <- furrr_options(globals=c("wd", "firelists", "opt", "process_sin
 results <- future_map(
   unique_seasons,
   ~{
-    process_single_season(.x)
+    tryCatch({
+      process_single_season(.x)
+    }, error = function(e) {
+      message <- paste("Error in season", .x, ":", e)
+      cat(message, file = merge_log_filename, append = TRUE)
+      return(NULL)
+    })
   },
   .options = future_options
 )
