@@ -39,8 +39,8 @@ opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 
 #Set the working directory to the specific outputs folder for the run
-wd <- setwd(opt$working_directory)
-wd <- setwd(opt$working_directory)
+setwd(opt$working_directory)
+wd <- getwd()
 
 #########################################################################################
 # NOTE: To run this code, you need to make sure the following FSim outputs are in the   #
