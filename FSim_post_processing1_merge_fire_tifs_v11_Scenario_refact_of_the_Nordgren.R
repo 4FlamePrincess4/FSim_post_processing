@@ -319,10 +319,10 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
       this_perim_AD_raster <- terra::rast(paste0(wd, "/", this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays/",
                                                  this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_", second_ID, ".tif"))
       second_fire_AD <- this_perim_AD_raster[[second_index]]
-      print(paste0("The arrival day for fire ", second_ID, " is ", second_fire_AD, "."))
       second_fire_AD_df <- terra::extract(second_fire_AD, matrix(first_ig_coords, ncol=2))
       # Extract the value itself from the resulting dataframe
       second_fire_AD_value <- second_fire_AD_df[1,1]
+      print(paste0("The arrival day for fire ", second_ID, " is ", second_fire_AD_value, "."))
       # Compare the start_day with the arrival_day_value
       if (!is.na(second_fire_AD_value)) {
         if (first_ig$start_day <= second_fire_AD_value) {
@@ -339,7 +339,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
         # fire 1 should not have ignited.
       } else { #End of scenario where the second fire AD value is not NA.
         print("No valid arrival_day value at the ignition point's location.")
-        print(paste0("Ignition fire ID = ", first_ID, ". Perimeter fire ID = ", second_ID, ". The ignition point location is ", first_ig_coordinates))
+        print(paste0("Ignition fire ID = ", first_ID, ". Perimeter fire ID = ", second_ID, ". The ignition point location is ", first_ig_coords))
       } #End of scenario where the second fire AD value is NA.
     } else if(second_ignition_in_first_perim){ #End of if-else scenario where the first fire ignition is inside of the second fire perimeter.
       #Check whether the ignition day is earlier than the arrival day at the pixel of the perimeter
@@ -352,6 +352,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
       first_fire_AD_df <- terra::extract(first_fire_AD, matrix(second_ig_coords, ncol=2))
       # Extract the value itself from the resulting dataframe
       first_fire_AD_value <- first_fire_AD_df[1,1]
+      print(paste0("The arrival day for fire ", first_ID, " is ", first_fire_AD_value, "."))
       # Compare the start_day with the arrival_day_value
       if (!is.na(first_fire_AD_value)) {
         if (second_ig$start_day <= first_fire_AD_value) {
@@ -368,7 +369,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
         } #End of if-else scenario where the ignition for fire 1 is inside of the fire 2 perimeter and the
         # ignition date is later than the fire 2 arrival day, so fire 1 would not have occurred.
       } else {#End of scenario where the AD value at the ignition point is not NA.
-        print(paste0("No valid arrival_day value at the ignition point's location. The coordinates for fire ", second_ID, " are: ", second_ig_coordinates, "."))
+        print(paste0("No valid arrival_day value at the ignition point's location. The coordinates for fire ", second_ID, " are: ", second_ig_coords, "."))
         print(paste0("Ignition fire ID = ", second_ID, ". Perimeter fire ID = ", first_ID, "."))
       } #End of if-else scenario where the AD value at the ignition point is NA.
     } else if(!(first_ignition_in_second_perim) && !(second_ignition_in_first_perim)){ #End of scenario where fire 2 ignition is inside of fire 1 perimeter.
