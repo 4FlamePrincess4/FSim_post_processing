@@ -434,7 +434,7 @@ process_fire_season <- function(each_season) {
   
   #If there is one or fewer fires in the season, use the process_single_fire_season function 
   if(length(this_season_fireIDs) <= 1){
-    process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt)
+    process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt,this_season_scen)
   } else { #Otherwise, read in the perimeters sqlite database and fetch this season's fire perimeters
     con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_", this_season_pt[1], "_", this_season_scen[1], "_Perimeters.sqlite"))
     query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
