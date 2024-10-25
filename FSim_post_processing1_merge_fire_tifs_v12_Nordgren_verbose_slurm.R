@@ -317,10 +317,10 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
       this_perim_AD_raster <- terra::rast(paste0(wd, "/", this_season_foa_run, "_", this_season_pt, "_ArrivalDays/",
                                                  this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_", second_ID, ".tif"))
       second_fire_AD <- this_perim_AD_raster[[second_index]]
-      print(paste0("The arrival day for fire ", second_ID, " is ", second_fire_AD, "."))
       second_fire_AD_df <- terra::extract(second_fire_AD, matrix(first_ig_coords, ncol=2))
       # Extract the value itself from the resulting dataframe
       second_fire_AD_value <- second_fire_AD_df[1,1]
+      print(paste0("The arrival day for fire ", second_ID, " is ", second_fire_AD_value, "."))
       # Compare the start_day with the arrival_day_value
       if (!is.na(second_fire_AD_value)) {
         if (first_ig$start_day <= second_fire_AD_value) {
@@ -350,6 +350,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
       first_fire_AD_df <- terra::extract(first_fire_AD, matrix(second_ig_coords, ncol=2))
       # Extract the value itself from the resulting dataframe
       first_fire_AD_value <- first_fire_AD_df[1,1]
+      print(paste0("The arrival day for fire ", first_ID, " is ", first_fire_AD_value, "."))
       # Compare the start_day with the arrival_day_value
       if (!is.na(first_fire_AD_value)) {
         if (second_ig$start_day <= first_fire_AD_value) {
@@ -590,6 +591,7 @@ process_single_season <- function(each_season) {
 
 unique_seasons <- unique(firelists$Season)
 unique_seasons <- unique_seasons[unique_seasons >= opt$first_season & unique_seasons <= opt$last_season]
+print(paste("Processing seasons:", paste(unique_seasons, collapse = ", ")))
 
 # Set up logger
 merge_log_filename <- paste0("merge_tifs_captains_log_", opt$merge_fires_part, ".txt")
@@ -613,7 +615,13 @@ future_options <- furrr_options(globals=c("wd", "firelists", "opt", "process_sin
 results <- future_map(
   unique_seasons,
   ~{
-    process_single_season(.x)
+    tryCatch({
+      process_single_season(.x)
+    }, error = function(e) {
+      message <- paste("Error in season", .x, ":", e)
+      cat(message, file = merge_log_filename, append = TRUE)
+      return(NULL)
+    })
   },
   .options = future_options
 )
