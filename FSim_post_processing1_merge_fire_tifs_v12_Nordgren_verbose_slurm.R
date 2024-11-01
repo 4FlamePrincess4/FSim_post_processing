@@ -223,19 +223,11 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
 
   print(paste0("There is only one fire in season ", each_season))
   #Read in the AD and FL rasters
-  #De-comment the below when you have a scenario
-  # this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
-  #                                    this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_",
-  #                                    this_season_fireIDs, ".tif")
   this_season_AD_filename <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
                                      this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
                                      this_season_fireIDs, ".tif")
   this_season_AD_stack <- terra::rast(this_season_AD_filename)
   #Use this info to read in the flame length tif filenames for this season's fires
-  #De-comment the below when you have a scenario
-  # this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
-  #                                    this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
-  #                                    this_season_fireIDs, ".tif")
   this_season_FL_filename <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
                                      this_season_foa_run, "_", this_season_pt, "_FlameLengths_FireID_",
                                      this_season_fireIDs, ".tif")
@@ -394,17 +386,9 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
   terra::values(accum_AD) <- NA
   terra::values(accum_FL) <- NA
   # Create lists of the file names for the season
-  #De-comment the below when you have a scenario
-  # this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
-  #                                    this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_",
-  #                                    this_season_fireIDs, ".tif")
   this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
                                      this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
                                      this_season_fireIDs, ".tif")
-  #De-comment the below when you have a scenario
-  # this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
-  #                                    this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
-  #                                    this_season_fireIDs, ".tif")
   this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
                                      this_season_foa_run, "_", this_season_pt, "_FlameLengths_FireID_",
                                      this_season_fireIDs, ".tif")
@@ -549,18 +533,10 @@ process_fire_season <- function(each_season) {
       terra::values(accum_AD) <- NA
       terra::values(accum_FL) <- NA
       # Create lists of the file names for the season
-      #De-comment the below when you have a scenario
-      # this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
-      #                                    this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_",
-      #                                    this_season_fireIDs, ".tif")
       this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
                                          this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
                                          this_season_fireIDs, ".tif")
       print(this_season_AD_filenames)
-      #De-comment the below when you have a scenario
-      # this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
-      #                                    this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
-      #                                    this_season_fireIDs, ".tif")
       this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
                                          this_season_foa_run, "_", this_season_pt, "_FlameLengths_FireID_",
                                          this_season_fireIDs, ".tif")
