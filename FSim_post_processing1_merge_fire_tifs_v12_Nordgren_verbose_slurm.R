@@ -499,8 +499,11 @@ process_fire_season <- function(each_season) {
     dplyr::filter(Season == each_season)
   #Fetch vectors of other run information
   this_season_fireIDs <- as.character(this_season_fires$FireID)
+  print(paste0("Season ", each_season, " fire IDs:", this_season_fireIDs))
   this_season_pt <- as.character(this_season_fires$Part)
+  print(paste0("Season ", each_season, " part:", this_season_pt))
   this_season_scen <- as.character(this_season_fires$Scenario)
+  print(paste0("Season ", each_season, " scenario:", this_season_scen))
   this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
   print(paste0("Unique Fire IDs for season ", each_season, ": ", this_season_fireIDs))
   
