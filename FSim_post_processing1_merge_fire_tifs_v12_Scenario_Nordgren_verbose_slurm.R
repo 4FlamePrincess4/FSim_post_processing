@@ -585,6 +585,7 @@ plan(cluster, workers = 20, timeout = 600)
 options(future.globals.maxSize = +Inf) #Just remove the check by setting it to infinity 
 
 future_options <- furrr_options(globals=c("wd", "firelists", "opt", "process_single_season", 
+                                          "merge_log_filename",
                                           "process_fire_season", "find_overlap_indices",
                                           "process_overlapping_fires", "align_and_stack_tifs", "align_raster",
                                           "handle_more_than_two_overlaps", "handle_two_or_fewer_overlaps", 
