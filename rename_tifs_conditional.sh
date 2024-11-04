@@ -19,7 +19,7 @@ for file in "$directory"/*; do
         base_file=$(basename "$file")
         # Calculate the length of the filename (including the extension)
         filename_length=${#base_file}
-        # Check if the filename (including extension) is less than 17 characters
+        # Check if the filename (including extension) is less than 26 characters
         if [ "$filename_length" -lt 26 ]; then
             # Get the parent directory name
             current_dir=$(basename "$directory")
