@@ -68,6 +68,9 @@ if (is.null(opt$seasons_per_part)) {
 } else {
   seasons_per_part <- as.integer(unlist(strsplit(opt$seasons_per_part, ",")))
 }
+# Set the optparse variables as local variables to then pass to furr_options() for parallelization
+foa_run <- opt$foa_run
+foa_lcp_path <- opt$foa_lcp_path
 
 #STEP 2: Combine fire lists from all four run parts
 ###############################################
@@ -260,7 +263,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
                                    overlapping_fire_ids_df$fire_id2)
   unique_overlapping_fire_ids <- unique(unique_overlapping_fire_ids)
   # Load the ignition database corresponding to the season part
-  con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_", this_season_pt[1], 
+  con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", foa_run, "_", this_season_pt[1], 
                                                                "_", this_season_scen[1], "_Ignitions.sqlite"))
   # Construct the SQL query to select the ignitions based on the IDs
   query <- paste("SELECT * FROM ignitions WHERE fire_id IN (", 
@@ -386,7 +389,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
     this_season_fireIDs <- this_season_fireIDs[-fires_to_delete]
   }
   # Create empty accumulator rasters
-  foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
+  foa_lcp <- terra::rast(foa_lcp_path, lyrs = 1)
   foa_lcp <- terra::unwrap(foa_lcp)
   accum_ID <- terra::rast(foa_lcp)
   accum_AD <- terra::rast(foa_lcp)
@@ -422,7 +425,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
 process_fire_season <- function(each_season) {
   library(RSQLite)
   print(paste0("Processing Season ", each_season,"..."))
-  foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
+  foa_lcp <- terra::rast(foa_lcp_path, lyrs = 1)
   foa_lcp <- terra::unwrap(foa_lcp)
   #Subset the firelists by the current season
   this_season_fires <- firelists %>%
@@ -434,14 +437,14 @@ process_fire_season <- function(each_season) {
   print(paste0("Season ", each_season, " part:", this_season_pt))
   this_season_scen <- as.character(this_season_fires$Scenario)
   print(paste0("Season ", each_season, " scenario:", this_season_scen))
-  this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
+  this_season_foa_run <- rep(foa_run, length(this_season_fireIDs))
   print(paste0("Unique Fire IDs for season ", each_season, ": ", this_season_fireIDs))
   
   #If there is one or fewer fires in the season, use the process_single_fire_season function 
   if(length(this_season_fireIDs) <= 1){
     process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt,this_season_scen)
   } else { #Otherwise, read in the perimeters sqlite database and fetch this season's fire perimeters
-    con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_", this_season_pt[1], "_", this_season_scen[1], "_Perimeters.sqlite"))
+    con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", foa_run, "_", this_season_pt[1], "_", this_season_scen[1], "_Perimeters.sqlite"))
     query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
     season_fire_perims <- RSQLite::dbGetQuery(con, query1)
     ref_sys <- RSQLite::dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
@@ -523,7 +526,7 @@ plan(cluster, workers = 64)
 # Increase serialization buffer size 
 options(future.globals.maxSize = +Inf) #Just remove the check by setting it to infinity 
 
-future_options <- furrr_options(globals=c("wd", "firelists", "opt", "process_single_season", 
+future_options <- furrr_options(globals=c("wd", "firelists", "foa_run","foa_lcp_path", "process_single_season", 
                                           "merge_log_filename",
                                           "process_fire_season", "find_overlap_indices",
                                           "process_overlapping_fires", 
