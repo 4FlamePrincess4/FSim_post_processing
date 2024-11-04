@@ -5,13 +5,10 @@ Additional scripts were created to automate processes on a linux cluster or Tita
 Finally, I created two scripts that automate two time-consuming processes on a linux cluster: 1) renaming all the Arrival Day and Flame Length tifs and 2) once those are renamed, compress all of the ArrivalDays, FlameLengths, and ArrivalTimes subdirectories. These scripts are designed to be submitted as slurm jobs dependent on the previous scripts in the pipeline finishing. 
 
 The full pipeline now is: 
-1) Run FSim
-2) 2)|-> FSim_post_processing2_merge_run_parts.R 3)|-> FSim_post_processing4_merge_FOAs.R
-
-   2)|-> auto_rename_tifs_conditional.sh         3)|-> auto_compress_tif_folders.sh
-
-   3)|-> FSim_post_processing1_merge_fire_tifs_v11_Scenario_refact_of_the_Nordgren.R 4)|-> FSim_post_processing5_summarize_overburn_removed_Alderaan.R
-
-Arrows stacked (|->) indicate places where the pipeline splits and two steps are running simultaneously, and the numbers indicate simultaneous processes. 
+1. Run FSim
+2. FSim_post_processing2_merge_run_parts.R -> FSim_post_processing4_merge_FOAs.R
+2. auto_rename_tifs_conditional.sh -> auto_compress_tif_folders.sh
+3. FSim_post_processing1_merge_fire_tifs_v11_Scenario_refact_of_the_Nordgren.R 
+4. FSim_post_processing5_summarize_overburn_removed_Alderaan.R
 
 The R scripts each require a separate bash script to run the R script as a slurm job. Currently there are the run_r_script.sh and run_r_script2.txt template files. Soon, I will add template slurm job scripts for each type of R job since there are fine variations in the slurm scripts depending on whether there are options, etc. 
