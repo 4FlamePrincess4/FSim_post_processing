@@ -127,7 +127,7 @@ log_file <- paste0("./overburn_est_log_", foa_run, "_", scenario, ".log")
 
 # Helper function to log messages to the log file
 log_message <- function(message) {
-  writeLines(message, log_file, append = TRUE)
+  cat(message, "\n", file = log_file, append = TRUE)
 }
 
 # Define the processing function for a single tif
