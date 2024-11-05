@@ -68,11 +68,6 @@ if (is.null(opt$seasons_per_part)) {
 } else {
   seasons_per_part <- as.integer(unlist(strsplit(opt$seasons_per_part, ",")))
 }
-# Set the optparse variables as local variables to then pass to furr_options() for parallelization
-#foa_run <- opt$foa_run
-#foa_lcp_path <- opt$foa_lcp_path
-#scenario <- opt$scenario
-#if (is.null(opt$scenario)) stop("Error: `scenario` was not parsed correctly.")
 
 #STEP 2: Combine fire lists from all four run parts
 ###############################################
