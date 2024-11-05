@@ -189,7 +189,7 @@ firelist_summary <- firelists %>%
          overburn_acres = pmax(acres_burned - acres_no_overburn, 0))
 
 # Write the results to CSV
-output_path <- paste0("./overburn_correction_by_season_", foa_run, "_", scenario, "_", run_timepoint, ".csv")
+output_path <- paste0("./overburn_correction_by_season_", foa_run, "_", scenario, "_", opt$run_timepoint, ".csv")
 write_csv(firelist_summary, output_path)
 
 # Clean up parallel backend
