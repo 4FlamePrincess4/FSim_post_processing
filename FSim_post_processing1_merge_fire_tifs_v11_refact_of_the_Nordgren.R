@@ -528,7 +528,7 @@ options(future.globals.maxSize = +Inf) #Just remove the check by setting it to i
 
 future_options <- furrr_options(globals=c("wd", "firelists", "foa_run","foa_lcp_path", "process_single_season", 
                                           "process_fire_season", "find_overlap_indices",
-                                          "process_overlapping_fires", 
+                                          "merge_log_filename", "process_overlapping_fires", 
                                           "handle_more_than_two_overlaps", "handle_two_or_fewer_overlaps", 
                                           "process_overlaps", "merge_tifs_w_accumulator", 
                                           "process_single_fire_season", "count_non_na"), seed=TRUE)
