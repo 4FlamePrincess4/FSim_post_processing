@@ -69,9 +69,10 @@ if (is.null(opt$seasons_per_part)) {
   seasons_per_part <- as.integer(unlist(strsplit(opt$seasons_per_part, ",")))
 }
 # Set the optparse variables as local variables to then pass to furr_options() for parallelization
-foa_run <- opt$foa_run
-foa_lcp_path <- opt$foa_lcp_path
-scenario <- opt$scenario
+#foa_run <- opt$foa_run
+#foa_lcp_path <- opt$foa_lcp_path
+#scenario <- opt$scenario
+#if (is.null(opt$scenario)) stop("Error: `scenario` was not parsed correctly.")
 
 #STEP 2: Combine fire lists from all four run parts
 ###############################################
@@ -113,7 +114,7 @@ for(j in 1:length(seasons_per_part)){
 
 #Initialize an empty vector and add it as a column to the firelists dataframe
 Part <- vector("character",nrow(firelists))
-Scenario <- rep(scenario, nrow(firelists))
+Scenario <- rep(opt$scenario, nrow(firelists))
 firelists <- cbind(firelists,Part,Scenario)
 #Sort the firelists dataframe by Season number
 firelists <- firelists[order(firelists$Season),]
@@ -212,7 +213,8 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
 
 #Define a function to process a season with just one fire.
 process_single_fire_season <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, this_season_scen) {
-
+  setwd(opt$working_directory)
+  wd <- getwd()
   print(paste0("There is only one fire in season ", each_season))
   #Read in the AD and FL rasters
   this_season_AD_filename <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_ArrivalDays/",
@@ -240,13 +242,15 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
   names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
   #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
   #Write the resulting 3-band raster stack.
-  terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
+  terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
   rm(this_season_AD_stack, this_season_FL_stack, this_season_ID_stack, season_fires_raster_stack)
   gc()
 }
 
 process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, this_season_scen, season_fire_perims, ref_sys, overlap_indices){
   library(RSQLite)
+  setwd(opt$working_directory)
+  wd <- getwd()
   fires_to_delete <- list()
   #Create a dataframe with overlapping fire IDs
   overlapping_fire_ids_df <- do.call(rbind, lapply(overlap_indices, function(pair) {
@@ -264,8 +268,8 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
                                    overlapping_fire_ids_df$fire_id2)
   unique_overlapping_fire_ids <- unique(unique_overlapping_fire_ids)
   # Load the ignition database corresponding to the season part
-  con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", foa_run, "_", this_season_pt[1], 
-                                                               "_", scenario, "_Ignitions.sqlite"))
+  con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_", this_season_pt[1], 
+                                                               "_", opt$scenario, "_Ignitions.sqlite"))
   # Construct the SQL query to select the ignitions based on the IDs
   query <- paste("SELECT * FROM ignitions WHERE fire_id IN (", 
                  toString(unique_overlapping_fire_ids),")")
@@ -390,7 +394,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
     this_season_fireIDs <- this_season_fireIDs[-fires_to_delete]
   }
   # Create empty accumulator rasters
-  foa_lcp <- terra::rast(foa_lcp_path, lyrs = 1)
+  foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
   foa_lcp <- terra::unwrap(foa_lcp)
   accum_ID <- terra::rast(foa_lcp)
   accum_AD <- terra::rast(foa_lcp)
@@ -418,15 +422,17 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
   names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
   #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
   #Write the resulting 3-band raster stack.
-  terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
+  terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
   rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack, foa_lcp)
   gc()
 }
 
 process_fire_season <- function(each_season) {
   library(RSQLite)
+  setwd(opt$working_directory)
+  wd <- getwd()
   print(paste0("Processing Season ", each_season,"..."))
-  foa_lcp <- terra::rast(foa_lcp_path, lyrs = 1)
+  foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
   foa_lcp <- terra::unwrap(foa_lcp)
   #Subset the firelists by the current season
   this_season_fires <- firelists %>%
@@ -438,14 +444,14 @@ process_fire_season <- function(each_season) {
   print(paste0("Season ", each_season, " part:", this_season_pt))
   this_season_scen <- as.character(this_season_fires$Scenario)
   print(paste0("Season ", each_season, " scenario:", this_season_scen))
-  this_season_foa_run <- rep(foa_run, length(this_season_fireIDs))
+  this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
   print(paste0("Unique Fire IDs for season ", each_season, ": ", this_season_fireIDs))
   
   #If there is one or fewer fires in the season, use the process_single_fire_season function 
   if(length(this_season_fireIDs) <= 1){
     process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt,this_season_scen)
   } else { #Otherwise, read in the perimeters sqlite database and fetch this season's fire perimeters
-    con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", foa_run, "_", this_season_pt[1], "_", scenario, "_Perimeters.sqlite"))
+    con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_", this_season_pt[1], "_", opt$scenario, "_Perimeters.sqlite"))
     query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
     season_fire_perims <- RSQLite::dbGetQuery(con, query1)
     ref_sys <- RSQLite::dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
@@ -490,7 +496,7 @@ process_fire_season <- function(each_season) {
       names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
       #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
       #Write the resulting 3-band raster stack.
-      terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
+      terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
       rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack, foa_lcp)
       gc()
     } else if(length(overlap_indices) >= 1){ #If there's at least one case of overlap, use the function process_overlapping_fires.
@@ -527,7 +533,7 @@ plan(cluster, workers = 64)
 # Increase serialization buffer size 
 options(future.globals.maxSize = +Inf) #Just remove the check by setting it to infinity 
 
-future_options <- furrr_options(globals=c("wd", "firelists", "foa_run","foa_lcp_path", "scenario",
+future_options <- furrr_options(globals=c("wd", "firelists", "opt",
                                           "merge_log_filename","process_single_season",
                                           "process_fire_season", "find_overlap_indices",
                                           "process_overlapping_fires", 
