@@ -246,6 +246,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
   library(RSQLite)
   setwd(opt$working_directory)
   wd <- getwd()
+  print(paste0("process_overlaps function fire IDs: ", this_season_fireIDs))
   fires_to_delete <- list()
   #Create a dataframe with overlapping fire IDs
   overlapping_fire_ids_df <- do.call(rbind, lapply(overlap_indices, function(pair) {
@@ -433,14 +434,14 @@ process_fire_season <- function(each_season) {
   this_season_fires <- firelists %>%
     dplyr::filter(Season == each_season)
   #Fetch vectors of other run information
-  this_season_fireIDs <- as.character(this_season_fires$FireID)
-  #print(paste0("Season ", each_season, " fire IDs:", this_season_fireIDs))
-  this_season_pt <- as.character(this_season_fires$Part)
-  #print(paste0("Season ", each_season, " part:", this_season_pt))
-  this_season_scen <- as.character(this_season_fires$Scenario)
-  #print(paste0("Season ", each_season, " scenario:", this_season_scen))
+  this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
+  print(paste0("Season ", each_season, " fire IDs:", this_season_fireIDs))
+  this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
+  print(paste0("Season ", each_season, " part:", this_season_pt))
+  this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
+  print(paste0("Season ", each_season, " scenario:", this_season_scen))
   this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
-  #print(paste0("Unique Fire IDs for season ", each_season, ": ", this_season_fireIDs))
+  print(paste0("Season ", each_season, " foa and run:", this_season_foa_run))
   
   #If there is one or fewer fires in the season, use the process_single_fire_season function 
   if(length(this_season_fireIDs) <= 1){
