@@ -442,7 +442,10 @@ process_fire_season <- function(each_season) {
   #print(paste0("Unique Fire IDs for season ", each_season, ": ", this_season_fireIDs))
   
   #If there is one or fewer fires in the season, use the process_single_fire_season function 
-  if(length(this_season_fireIDs) <= 1){
+  if(length(this_season_fireIDs) = 0){
+    print(paste0("Season ", each_season, " had 0 fires. "))
+  }
+  if(length(this_season_fireIDs) = 1){
     process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt)
   } else { #Otherwise, read in the perimeters sqlite database and fetch this season's fire perimeters
     con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_", this_season_pt[1], "_Perimeters.sqlite"))
