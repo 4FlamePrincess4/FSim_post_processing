@@ -95,8 +95,7 @@ remove(part_seasons)
 part_seasons_list <- list()
 for(j in 1:length(seasons_per_part)){
   if(exists("part_seasons")){
-    part_seasons <- c((1+max(part_seasons)):(cumsum_seasons[j]))
-    #print(part_seasons)
+    part_seasons <- c((1+max(part_seasons)):(cumsum_seasons[j]))    
   }else{
     part_seasons <- c(1:seasons_per_part[j])
   }
@@ -208,8 +207,6 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
 
 #Define a function to process a season with just one fire.
 process_single_fire_season <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, this_season_scen) {
-  setwd(opt$working_directory)
-  wd <- getwd()
   print(paste0("There is only one fire in season ", each_season))
   #Read in the AD and FL rasters
   this_season_AD_filename <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_ArrivalDays/",
@@ -244,8 +241,6 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
 
 process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, this_season_scen, season_fire_perims, ref_sys, overlap_indices){
   library(RSQLite)
-  setwd(opt$working_directory)
-  wd <- getwd()
   #print(paste0("process_overlaps function fire IDs: ", this_season_fireIDs))
   fires_to_delete <- list()
   #Create a dataframe with overlapping fire IDs
@@ -343,7 +338,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
         # fire 1 should not have ignited.
       } else { #End of scenario where the second fire AD value is not NA.
         print("No valid arrival_day value at the ignition point's location.")
-        print(paste0("Ignition fire ID = ", first_ID, ". Perimeter fire ID = ", second_ID, ". The ignition point location is ", first_ig_coords))
+        print(paste0("Ignition fire ID = ", first_ID, ". Perimeter fire ID = ", second_ID, ". The ignition point location is ", first_ig_coords, "."))
       } #End of scenario where the second fire AD value is NA.
     } else if(second_ignition_in_first_perim){ #End of if-else scenario where the first fire ignition is inside of the second fire perimeter.
       #Check whether the ignition day is earlier than the arrival day at the pixel of the perimeter
@@ -408,12 +403,21 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
                                      this_season_fireIDs, ".tif")
   # Read in each fire and update the accumulators
   for(fire in 1:length(this_season_AD_filenames)){
-    result <- merge_tifs_w_accumulator(this_season_AD_filenames[fire], this_season_FL_filenames[fire],
-                                       this_season_fireIDs[fire], foa_lcp, accum_AD, accum_FL, accum_ID)
-    accum_ID <- result$accum_ID
-    accum_AD <- result$accum_AD
-    accum_FL <- result$accum_FL
-  }
+        # Check if both .tif files exist
+        if (!file.exists(this_season_AD_filenames[fire]) || !file.exists(this_season_FL_filenames[fire])) {
+          cat(sprintf("File does not exist for FireID %s: %s or %s\n",
+                this_season_fireIDs[fire],
+                this_season_AD_filenames[fire],
+                this_season_FL_filenames[fire]))
+          next  # Skip to the next iteration if either file is missing
+        }
+        # If files exist, proceed to merge
+        result <- merge_tifs_w_accumulator(this_season_AD_filenames[fire], this_season_FL_filenames[fire],
+                                           this_season_fireIDs[fire], foa_lcp, accum_AD, accum_FL, accum_ID)
+        accum_ID <- result$accum_ID
+        accum_AD <- result$accum_AD
+        accum_FL <- result$accum_FL
+      }
   season_fires_raster_stack <- c(accum_ID, accum_AD, accum_FL)
   names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
   #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
@@ -425,9 +429,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
 
 process_fire_season <- function(each_season) {
   library(RSQLite)
-  setwd(opt$working_directory)
-  wd <- getwd()
-  print(paste0("Processing Season ", each_season,"..."))
+  process_single_season <- function(each_season) {
   foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
   foa_lcp <- terra::unwrap(foa_lcp)
   #Subset the firelists by the current season
@@ -435,16 +437,15 @@ process_fire_season <- function(each_season) {
     dplyr::filter(Season == each_season)
   #Fetch vectors of other run information
   this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
-  #print(paste0("Season ", each_season, " fire IDs:", this_season_fireIDs))
   this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
-  #print(paste0("Season ", each_season, " part:", this_season_pt))
   this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
-  #print(paste0("Season ", each_season, " scenario:", this_season_scen))
   this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
-  #print(paste0("Season ", each_season, " foa and run:", this_season_foa_run))
   
   #If there is one or fewer fires in the season, use the process_single_fire_season function 
-  if(length(this_season_fireIDs) <= 1){
+  if(length(this_season_fireIDs) = 0){
+    print(paste0("Season ", each_season, " had 0 fires. No merged tif will be saved."))
+  }
+  if(length(this_season_fireIDs) = 1){
     process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt,this_season_scen)
   } else { #Otherwise, read in the perimeters sqlite database and fetch this season's fire perimeters
     con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_", this_season_pt[1], "_", opt$scenario, "_Perimeters.sqlite"))
@@ -482,6 +483,15 @@ process_fire_season <- function(each_season) {
                                          this_season_fireIDs, ".tif")
       # Read in each fire and update the accumulators
       for(fire in 1:length(this_season_AD_filenames)){
+        # Check if both .tif files exist
+        if (!file.exists(this_season_AD_filenames[fire]) || !file.exists(this_season_FL_filenames[fire])) {
+          cat(sprintf("File does not exist for FireID %s: %s or %s\n",
+                this_season_fireIDs[fire],
+                this_season_AD_filenames[fire],
+                this_season_FL_filenames[fire]))
+          next  # Skip to the next iteration if either file is missing
+        }
+        # If files exist, proceed to merge
         result <- merge_tifs_w_accumulator(this_season_AD_filenames[fire], this_season_FL_filenames[fire],
                                            this_season_fireIDs[fire], foa_lcp, accum_AD, accum_FL, accum_ID)
         accum_ID <- result$accum_ID
