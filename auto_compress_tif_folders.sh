@@ -56,7 +56,7 @@ if [[ "$compress_needed" == true ]]; then
         # Skip if no matching subdirectories are found
         [[ ! -d "$DIR" ]] && continue
 
-        ZIP_NAME="$(basename "$DIR").zip"  # Name the zip file after the subdirectory
+        ZIP_NAME="$BASE_DIR/$(basename "$DIR").zip"  # Save the zip file in the BASE_DIR
         zip -r "$ZIP_NAME" "$DIR" 2>/dev/null
         echo "Compressed $DIR into $ZIP_NAME."
     done
