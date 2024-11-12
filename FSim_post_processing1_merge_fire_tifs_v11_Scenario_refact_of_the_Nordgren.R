@@ -428,6 +428,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
 
 process_fire_season <- function(each_season) {
   library(RSQLite)
+  print(paste0("Processing Season ", each_season,"..."))
   foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
   foa_lcp <- terra::unwrap(foa_lcp)
   #Subset the firelists by the current season
