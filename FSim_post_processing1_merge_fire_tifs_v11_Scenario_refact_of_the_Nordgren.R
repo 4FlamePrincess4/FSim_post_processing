@@ -241,7 +241,6 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
 
 process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, this_season_scen, season_fire_perims, ref_sys, overlap_indices){
   library(RSQLite)
-  #print(paste0("process_overlaps function fire IDs: ", this_season_fireIDs))
   fires_to_delete <- list()
   #Create a dataframe with overlapping fire IDs
   overlapping_fire_ids_df <- do.call(rbind, lapply(overlap_indices, function(pair) {
@@ -429,7 +428,6 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_foa_r
 
 process_fire_season <- function(each_season) {
   library(RSQLite)
-  process_single_season <- function(each_season) {
   foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
   foa_lcp <- terra::unwrap(foa_lcp)
   #Subset the firelists by the current season
