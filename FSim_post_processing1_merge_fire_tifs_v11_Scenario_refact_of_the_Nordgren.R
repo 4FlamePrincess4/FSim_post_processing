@@ -434,16 +434,6 @@ process_fire_season <- function(each_season) {
   #Subset the firelists by the current season
   this_season_fires <- firelists %>%
     dplyr::filter(Season == each_season)
-  #Determine whether any of the fires have an area burned of 0 acres.
-  #These should be removed because they will not contribute to overburn, 
-  # and they will cause errors in the event of a record: off run where a previously run fire does not burn.
-  this_season_fires_no_area <- this_season_fires %>% 
-    dplyr::filter(Acres == 0)
-  print(paste0("Season ", this_season_fires_no_area$Season, " fire ", this_season_fires_no_area$FireID,
-               "has a burned area of 0 acres."))
-  print("These fires will not be assessed for overburn.")
-  this_season_fires <- this_season_fires %>%
-    dplyr::filter(Acres > 0)
   #Fetch vectors of other run information
   this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
   this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
@@ -457,6 +447,16 @@ process_fire_season <- function(each_season) {
   if(length(this_season_fireIDs) == 1){
     process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt,this_season_scen)
   } else { #Otherwise, read in the perimeters sqlite database and fetch this season's fire perimeters
+    #Determine whether any of the fires have an area burned of 0 acres.
+    #These should be removed because they will not contribute to overburn, 
+    # and they will cause errors in the event of a record: off run where a previously run fire does not burn.
+    this_season_fires_no_area <- this_season_fires %>% 
+      dplyr::filter(Acres == 0)
+    print(paste0("Season ", this_season_fires_no_area$Season, " fire ", this_season_fires_no_area$FireID,
+                 "has a burned area of 0 acres."))
+    print("These fires will not be assessed for overburn.")
+    this_season_fires <- this_season_fires %>%
+      dplyr::filter(Acres > 0)
     con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_", this_season_pt[1], "_", opt$scenario, "_Perimeters.sqlite"))
     query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
     season_fire_perims <- RSQLite::dbGetQuery(con, query1)
