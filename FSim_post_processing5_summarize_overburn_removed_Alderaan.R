@@ -52,6 +52,7 @@ if (is.null(opt$seasons_per_part)) {
 # Set the optparse variables as local variables to then pass to furr_options() for parallelization
 foa_run <- opt$foa_run
 scenario <- opt$scenario
+run_timepoint <- opt$run_timepoint
 
 #STEP 2: Combine fire lists from all four run parts
 ###############################################
@@ -111,7 +112,7 @@ for(fire_record in 1:nrow(firelists)){
   }
 }
 
-write_csv(firelists, paste0("./", foa_run,"_",scenario, "_merged_firelists.csv"))
+write_csv(firelists, paste0("./", foa_run,"_",scenario, "_", run_timepoint, "_merged_firelists.csv"))
 
 #STEP 3: Estimate area removed during the overburn process
 #############################################################
