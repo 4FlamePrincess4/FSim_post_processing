@@ -55,7 +55,9 @@ okwen_origin <- origin(okwen_extent)
 target_dirs <- list.dirs(path= wd, recursive = FALSE, full.names = TRUE)
 
 #Filter the subdirectories to only those that match the scenario and timepoint
-target_dirs <- target_dirs[grep1(opt$scenario, target_dirs) & grep1(opt$run_timepoint, target_dirs)]
+target_dirs <- target_dirs[grep1(opt$scenario, target_dirs)]
+#Use the below if you're working with a timepoint run for the ongoing project
+#target_dirs <- target_dirs[grep1(opt$scenario, target_dirs) & grep1(opt$run_timepoint, target_dirs)]
 
 #Check if there are matching directories
 if(length(target_dirs) == 0){
