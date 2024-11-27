@@ -4,62 +4,94 @@ library(sp)
 library(raster)
 library(terra)
 library(tidyterra)
+library(optparse)
+
+#Set up input arguments with optparse
+option_list = list(
+  make_option(c("-w", "--working_directory"), type="character", default=NULL,
+              help="working directory (mandatory)", metavar="character"),
+  make_option(c("-s", "--scenario"), type="character", default=NULL,
+              help="project scenario (mandatory)", metavar="character"),
+  make_option(c("-t", "--run_timepoint"), type="character", default=NULL,
+              help="timepoint for the scenario (mandatory)", metavar="character"),
+  make_option(c("-e","--study_area_lcp"), type="character", default=NULL,
+              help="path for study area tif file to which all the FOA rasters should snap", metavar="character")
+)
+# parse the command-line options
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
 
 #Set the working directory to the specific outputs folder for the run
-wd <- setwd("D:/WFSETP/FSim_Outputs/TTN_LF2020/")
+setwd(opt$working_directory)
+wd <- getwd()
 
 #######################################################################################
 # NOTE: To run this code, you need to make sure the following FSim outputs are in the #
 #       working directory: the FireSizeList.csv files, the All.tif files, the         #
 #       ArrivalDays tifs, the FlameLengths tifs, and the Perimeters.sqlite files.     #
 #######################################################################################
+#Create a directory to hold the results 
+merged_dir <- paste0("./okwen_", opt$run_timepoint, "_", opt$scenario, "_merged_outputs")
+dir.create(merged_dir)
 
-run_timepoint <- "baseline_time0"
-scenario <- "LF2020"
-
-okwen_foa1c_r16_t0_bp <- raster("./okwen_foa1c_r16/foa1c_r16_LF2020_baseline_time0_FullRun_bp.tif")
-okwen_foa2d_r5_t0_bp <- raster("./okwen_foa2d_r5/foa2d_r5_LF2020_baseline_time0_FullRun_bp.tif")
-okwen_foa3d_r8_t0_bp <- raster("./okwen_foa3d_r8/foa3d_r8_LF2020_baseline_time0_FullRun_bp.tif")
-colville_foa4d_r7_t0_bp <- raster("./colville_foa4d_r7/foa4d_r7_LF2020_baseline_time0_FullRun_bp.tif")
-colville_foa5d_r10_t0_bp <- raster("./colville_foa5d_r10/foa5d_r10_LF2020_baseline_time0_FullRun_bp.tif")
-
-okwen_extent <- raster("../../Data/LF2020_LCP_2023_OKAWEN_Colville/LF2022_230_OKAWEN_Colville_LCP-001.tif")
+#Read in the study area template raster and save its crs and origin.
+okwen_extent <- raster(opt$study_area_lcp)
 okwen_crs <- crs(okwen_extent)
 okwen_origin <- origin(okwen_extent)
 
-crs(okwen_foa1c_r16_t0_bp) <- okwen_crs
-crs(okwen_foa2d_r5_t0_bp) <- okwen_crs
-crs(okwen_foa3d_r8_t0_bp) <- okwen_crs
-crs(colville_foa4d_r7_t0_bp) <- okwen_crs
-crs(colville_foa5d_r10_t0_bp) <- okwen_crs
+#Create a helper function that matches the crs, origin, and extent of the FOA rasters to that of the study area raster.
+match_foas_to_study_area <- function(foa_raster_list, reference_crs, reference_origin, reference_extent){
+  #Apply the operations to each raster in the list
+  processed_rasters <- lapply(foa_raster_list, function(r){
+    crs(r) <- reference_crs
+    origin(r) <- reference_origin
+    extended_r <- raster::extend(r, reference_extent, value = NA)
+    return(extended_r)
+    })
+  return(processed_rasters)
+  }
 
-origin(okwen_foa1c_r16_t0_bp) <- okwen_origin
-origin(okwen_foa2d_r5_t0_bp) <- okwen_origin
-origin(okwen_foa3d_r8_t0_bp) <- okwen_origin
-origin(colville_foa4d_r7_t0_bp) <- okwen_origin
-origin(colville_foa5d_r10_t0_bp) <- okwen_origin
+#Patterns to match each burn probability raster
+patterns <- c(
+  ".*FullRun_bp\\.tif$",
+  ".*FullRun_flp_0to2\\.tif$",
+  ".*FullRun_flp_2to4\\.tif$",
+  ".*FullRun_flp_4to6\\.tif$",
+  ".*FullRun_flp_6to8\\.tif$",
+  ".*FullRun_flp_8to12\\.tif$",
+  ".*FullRun_flp_12plus\\.tif$"
+)
 
-okwen_foa1c_r16_t0_bp_extended <- raster::extend(okwen_foa1c_r16_t0_bp,
-                                                okwen_extent, value=NA)
-okwen_foa2d_r5_t0_bp_extended <- raster::extend(okwen_foa2d_r5_t0_bp,
-                                                 okwen_extent, value=NA)
-okwen_foa3d_r8_t0_bp_extended <- raster::extend(okwen_foa3d_r8_t0_bp,
-                                                okwen_extent, value=NA)
-colville_foa4d_r7_t0_bp_extended <- raster::extend(colville_foa4d_r7_t0_bp,
-                                                okwen_extent, value=NA)
-colville_foa5d_r10_t0_bp_extended <- raster::extend(colville_foa5d_r10_t0_bp,
-                                                okwen_extent, value=NA)
-
-okwen_t0_bp_list <- list(okwen_foa1c_r16_t0_bp_extended,okwen_foa2d_r5_t0_bp_extended,okwen_foa3d_r8_t0_bp_extended,
-                         colville_foa4d_r7_t0_bp_extended, colville_foa5d_r10_t0_bp_extended)
-names(okwen_t0_bp_list)[1:2] <- c('x','y')
-okwen_t0_bp_list$fun <- sum
-okwen_t0_bp_list$na.rm <- TRUE
-okwen_t0_bp_list$tolerance <- 4
-
-okwen_t0_bp <- do.call(raster::mosaic, okwen_t0_bp_list)
-plot(okwen_t0_bp)
-merged_dir <- paste0("./okwen_", run_timepoint, "_", scenario, "_merged_outputs")
-dir.create(merged_dir)
-writeRaster(okwen_t0_bp, 
-            paste0(merged_dir, "/okwen_", run_timepoint, "_", scenario,"merged_bp.tif"), format="GTiff")
+for(pattern in patterns){
+foa_rasters <- list.files(
+    path = wd,
+    recursive = TRUE,
+    pattern = pattern,
+    full.names = TRUE
+  )
+  
+  print(paste("Processing pattern:", pattern))
+  print(foa_rasters)
+  
+  # Match CRS, origin, and extent to the study area raster
+  processed_rasters <- match_foas_to_study_area(foa_rasters, okwen_crs, okwen_origin, okwen_extent)
+  
+  # Prepare arguments for raster::mosaic
+  names(processed_rasters)[1:2] <- c('x', 'y') # Rename for mosaic
+  processed_rasters$fun <- sum
+  processed_rasters$na.rm <- TRUE
+  processed_rasters$tolerance <- 4
+  
+  # Use raster::mosaic to merge the rasters
+  merged_raster <- do.call(raster::mosaic, processed_rasters)
+  
+  # Define the output filename based on the pattern
+  output_filename <- paste0(
+    merged_dir, "/okwen_", opt$run_timepoint, "_", opt$scenario, "_", 
+    gsub(".+FullRun_", "", gsub("\\.tif$", "", pattern)), "_merged.tif"
+  )
+  
+  # Save the merged raster
+  writeRaster(merged_raster, output_filename, format = "GTiff", overwrite = TRUE)
+  message(paste("Merged raster saved to:", output_filename))
+}
