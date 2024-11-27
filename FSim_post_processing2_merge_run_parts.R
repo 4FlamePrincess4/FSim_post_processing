@@ -5,9 +5,34 @@ library(raster)
 library(terra)
 library(tidyterra)
 library(RSQLite)
+library(optparse)
+
+#Set up input arguments with optparse
+option_list = list(
+  make_option(c("-w", "--working_directory"), type="character", default=NULL,
+              help="working directory (mandatory)", metavar="character"),
+  make_option(c("-r", "--foa_run"), type="character", default=NULL,
+              help="foa run label (mandatory)", metavar="character"),
+  make_option(c("-s", "--scenario"), type="character", default=NULL,
+              help="project scenario (mandatory)", metavar="character"),
+  make_option(c("-t", "--run_timepoint"), type="character", default=NULL,
+              help="timepoint for the scenario (mandatory)", metavar="character"),
+  make_option(c("-n", "--number_of_seasons"), type="integer", default=NULL,
+              help="total number of seasons (mandatory)", metavar="integer"),
+  make_option(c("--seasons_in_part"), type="integer", default=NULL,
+              help="number of seasons in a part", metavar="integer"),
+  make_option(c("--number_of_parts"), type="integer", default=NULL,
+              help="number of run parts", metavar="integer"),
+  make_option(c("-j", "--seasons_per_part"), type="character", default=NULL,
+              help="vector of number of seasons in a part", metavar="character")
+)
+# parse the command-line options
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
 
 #Set the working directory to the specific outputs folder for the run
-wd <- setwd("D:/WFSETP/FSim_Outputs/2022_baseline_t0/okwen_foa2c_r10/")
+setwd(opt$working_directory)
+wd <- getwd()
 
 #######################################################################################
 # NOTE: To run this code, you need to make sure the following FSim outputs are in the #
@@ -17,36 +42,31 @@ wd <- setwd("D:/WFSETP/FSim_Outputs/2022_baseline_t0/okwen_foa2c_r10/")
 
 #STEP 1: Record run information below 
 ###############################################
-foa_run <- "FOA2c_r10"
-#scenario <- "LF2020"
-run_timepoint <- "baseline_time0"
-foa_lcp <- raster("../../../Data/Landfire2022_LCGs/FOA2c_Landfire2022/FOA2c_LCG_LF2022_FBFM40_230_120m.tif")
-okwen_perimeter <- st_read("../../../Data/OkWen_shapefiles/FOA_shapefiles/OkWen_AllFOAs_60km_buffer/OkWen_cFOAs_Albers_60km_Buffer.shp")
-foa_extent <- raster::extent(foa_lcp)
-okwen_extent <- raster::extent(okwen_perimeter)
-number_of_seasons <- 20000
-#Use the below if you have an equal number of seasons for each part
-number_of_parts <- 8
-seasons_per_part <- c(rep(2500, number_of_parts))
-#Use the below alternative if you have different numbers of seasons for each part
-seasons_per_part <- c(5000, 7000, 2000, 1000, 5000)
+# calculate or parse seasons_per_part
+if (is.null(opt$seasons_per_part)) {
+  seasons_per_part <- rep(opt$seasons_in_part, opt$number_of_parts)
+} else {
+  seasons_per_part <- as.integer(unlist(strsplit(opt$seasons_per_part, ",")))
+}
 
 #STEP 2: Combine fire lists from all four run parts
 ###############################################
-#Read in run fire lists
 firelist_files <- list.files(path=wd,
                              recursive=F,
                              pattern=".+FireSizeList.csv$",
                              full.names=T)
-
 firelist_tables <- lapply(firelist_files, read.csv, header=TRUE)
+#Combine the fire lists from all of the parts
 firelists <- do.call(rbind, firelist_tables)
+#Add a Season_FireID variable to distinguish fires with the same numbers but from different parts
 firelists <- firelists %>%
   mutate(Season_FireID = paste0(Season,"_",FireID))
 
-#Solution to create part labels for parts of varying numbers of seasons
-#First, make x number of vectors, where x is equal to the number of parts, 
-# with a unique sequence of numbers corresponding to the seasons for each part
+### Solution to create part labels for parts of varying numbers of seasons: ###
+
+## First, make x number of vectors, where x is equal to the number of parts, 
+## with a unique sequence of numbers corresponding to the seasons for each part.
+
 #Grab the cumulative number of seasons per part
 cumsum_seasons <- cumsum(seasons_per_part)
 #remove the object "part_seasons" so that the ifelse statement in lines 56 through 61 works
@@ -62,11 +82,14 @@ for(j in 1:length(seasons_per_part)){
   part_seasons_li <- list(assign(paste0("pt",j,"_seasons_",min(part_seasons),"_",max(part_seasons)), part_seasons))
   part_seasons_list <- append(part_seasons_list,part_seasons_li)
 }
-#Second, compare each fire's season to a list of seasons for each part and assign the 
-# correct part label
+
+## Second, compare each fire's season to a list of seasons for each part and assign the 
+## correct part label.
+
 #Initialize an empty vector and add it as a column to the firelists dataframe
 Part <- vector("character",nrow(firelists))
-firelists <- cbind(firelists,Part)
+Scenario <- rep(scenario, nrow(firelists))
+firelists <- cbind(firelists,Part,Scenario)
 #Sort the firelists dataframe by Season number
 firelists <- firelists[order(firelists$Season),]
 #For each fire in the firelists dataframe
@@ -131,9 +154,9 @@ for(this_layer in 1:nrow(layers)){
   print("Processing the weighted mean of the stack of part rasters...")
   mean_p <- raster::weighted.mean(ptif_stack,seasons_per_part,na.rm=TRUE)
   #Plot the averaged raster
-  plot(mean_p)+title(paste0(foa_run,"_",run_timepoint,"_FullRun_",layers$layer_name[this_layer]))
+  plot(mean_p)+title(paste0(opt$foa_run,"_",opt$scenario, "_", opt$run_timepoint,"_FullRun_",layers$layer_name[this_layer]))
   #Write the averaged raster to the working directory
-  writeRaster(mean_p,paste0(foa_run,"_",run_timepoint,"_FullRun_",layers$layer_name[this_layer]),
+  writeRaster(mean_p,paste0(opt$foa_run,"_",opt$scenario, "_", opt$run_timepoint,"_FullRun_",layers$layer_name[this_layer]),
               format="GTiff", overwrite=TRUE)
   #Re-initialize the p_tifs list
   p_tifs <- list()
@@ -181,13 +204,15 @@ for (i in seq_along(perimeter_dbs)){
   
   #save the file
   st_write(df2,
-              paste0("./", "perimeters_", foa_run, "_", run_timepoint, "_part",i),
+              paste0("./", "perimeters_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_part",i),
               driver= "ESRI Shapefile", append=FALSE)
+  #The below options combine the parts into one geojson or shapefile, 
+  # but these file types don't support file sizes large enough to store all perimeters.
   # st_write(df2,
-  #          paste0("./", "perimeters_", foa_run,".geojson"),
+  #          paste0("./", "perimeters_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".geojson"),
   #          append=TRUE)
   # st_write(df2,
-  #          paste0("./", "perimeters_", run_timepoint),
+  #          paste0("./", "perimeters_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
   #          driver= "ESRI Shapefile", append=TRUE)
 }
 dbDisconnect(con)
@@ -202,11 +227,15 @@ point_dbs <- list.files(path=wd,
 
 i=1
 
+# Initialize an empty vector for accumulating points
+pts_vector_all <- NULL
+
 #Loop through each perimeter, manipulate, and then merge all into one file
 
 for (i in seq_along(point_dbs)){
   
-  #Work with the sqlite data ----
+  # Extract the run part from the file path (e.g., "pt1" from path)
+  run_part <- sub(".*_(pt\\d+)_.*", "\\1", basename(point_dbs[i]))
   
   #connect to the database
   con <- dbConnect(drv=RSQLite::SQLite(), dbname=point_dbs[i])
@@ -224,17 +253,29 @@ for (i in seq_along(point_dbs)){
     assign(paste0("df",j), dbGetQuery(conn=con, statement=paste("SELECT * FROM '", tables[[j]], "'", sep="")))
   }
   
+  # Close the database connection
+  dbDisconnect(con)
+  
   #create a shapefile from the dataframes ----
   
   #change the x, y geometry fields to lat/long
   colnames(df2)[colnames(df2) == "ignition_x"]<- "lon"
   colnames(df2)[colnames(df2) == "ignition_y"]<- "lat"
-
   
-  pts_vector <- terra::vect(x = df2, crs=df3$srtext)
-
+  # Add run part as a new column in df2
+  df2$run_part <- run_part
   
-  #save the file
-  writeVector(pts_vector, paste0("./", "ignitions_", foa_run, "_", run_timepoint, "_part",i),
-              filetype= "ESRI Shapefile")
+  # Create vector for current points with renamed geometry fields
+  pts_vector <- terra::vect(x = df2, geom = c("lon", "lat"), crs = df3$srtext)
+
+  # Combine with accumulated points
+  if (is.null(pts_vector_all)) {
+    pts_vector_all <- pts_vector
+  } else {
+    pts_vector_all <- rbind(pts_vector_all, pts_vector)
+  }
 }
+  
+#save the file
+writeVector(pts_vector_all, paste0("./", "ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
+              filetype= "ESRI Shapefile")
