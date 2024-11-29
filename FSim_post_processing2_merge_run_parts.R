@@ -88,7 +88,7 @@ for(j in 1:length(seasons_per_part)){
 
 #Initialize an empty vector and add it as a column to the firelists dataframe
 Part <- vector("character",nrow(firelists))
-Scenario <- rep(scenario, nrow(firelists))
+Scenario <- rep(opt$scenario, nrow(firelists))
 firelists <- cbind(firelists,Part,Scenario)
 #Sort the firelists dataframe by Season number
 firelists <- firelists[order(firelists$Season),]
