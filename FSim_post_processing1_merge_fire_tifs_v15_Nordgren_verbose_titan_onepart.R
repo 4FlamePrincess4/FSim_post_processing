@@ -474,68 +474,86 @@ process_fire_season <- function(each_season) {
     print("These fires will not be assessed for overburn.")
     this_season_fires <- this_season_fires %>%
       dplyr::filter(Acres > 0)
-    #Fetch vectors of run information from the filtered list of season fires
-    this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
-    this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
-    this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
-    this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
-    con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", foa_run, "_Perimeters.sqlite"))
-    #Decomment the below if you have a scenario
-    #con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", foa_run, "_", scenario, "_Perimeters.sqlite"))
-    query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
-    season_fire_perims <- RSQLite::dbGetQuery(con, query1)
-    ref_sys <- RSQLite::dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
-    RSQLite::dbDisconnect(con)
-    #Convert these perimeters to an sf object
-    season_fire_perims$GEOMETRY <- sf::st_as_sfc(structure(as.list(season_fire_perims$GEOMETRY),class="blob"), crs = ref_sys$srtext)
-    season_fire_perims <- sf::st_as_sf(season_fire_perims)
-    #Plot to confirm they loaded correctly. There are multiple variables, so just plot the first (the object ID).
-    #plot(season_fire_perims, col = "black", max.plot = 1)
+    if(length(this_season_fires) == 0){
+      #Check for cases where, after filtering out fires with no burned area, there are no fires left in the season.
+      print(paste0("Season ", each_season, " had 0 fires after filtering out fires with no burned area. No merged tif will be saved."))
+    }
+    if(length(this_season_fires) == 1){
+      #Check for cases where, after filtering out fires with no burned area, there was only one fire left in the season.
+      #Fetch vectors of run information from the filtered list of season fires
+      this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
+      this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
+      this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
+      this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
+      process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt,this_season_scen)
+    } else {
+      #Check for cases where, after filtering out fires with no burned area, there are still 2 or more fires left in the season. Now you can check for overlap and delete overburn.
+      #Fetch vectors of run information from the filtered list of season fires
+      this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
+      this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
+      this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
+      this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
+      con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_", this_season_pt[1], "_", opt$scenario, "_Perimeters.sqlite"))
+      query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
+      season_fire_perims <- RSQLite::dbGetQuery(con, query1)
+      ref_sys <- RSQLite::dbGetQuery(con, "SELECT * FROM spatial_ref_sys")
+      RSQLite::dbDisconnect(con)
+      #Convert these perimeters to an sf object
+      season_fire_perims$GEOMETRY <- sf::st_as_sfc(structure(as.list(season_fire_perims$GEOMETRY),class="blob"), crs = ref_sys$srtext)
+      season_fire_perims <- sf::st_as_sf(season_fire_perims)
+      #Plot to confirm they loaded correctly. There are multiple variables, so just plot the first (the object ID).
+      #plot(season_fire_perims, col = "black", max.plot = 1)
     
-    #Check whether any of the fire perimeters for this season overlap. The result is a matrix of logical outcomes.
-    overlap_matrix <- sf::st_intersects(season_fire_perims, sparse = FALSE)
-    #Use the function find_overlap_indices to determine which fires overlap with which other fires.
-    overlap_indices <- find_overlap_indices(overlap_matrix)
-    print(paste0("There are ",length(overlap_indices), " cases where fires overlap in season ", each_season, "."))
-    #If no fires overlap, use the merge_and_write_rasters function to export the 3-band season tif.
-    if(length(overlap_indices) == 0){
-      # Create empty accumulator rasters
-      accum_ID <- terra::rast(foa_lcp)
-      accum_AD <- terra::rast(foa_lcp)
-      accum_FL <- terra::rast(foa_lcp)
-      # Initialize accumulator rasters with NAs
-      terra::values(accum_ID) <- NA
-      terra::values(accum_AD) <- NA
-      terra::values(accum_FL) <- NA
-      # Create lists of the file names for the season
-      #De-comment the below when you have a scenario
-      # this_season_AD_filenames <- paste0(wd, "/", this_season_foa_run, "_", scenario, "_ArrivalDays/",
-      #                                    "FireID_", this_season_fireIDs, ".tif")                                
-      this_season_AD_filenames <- paste0(wd, "/", this_season_foa_run, "_ArrivalDays/",
-                                   "FireID_", this_season_fireIDs, ".tif")     
-      #De-comment the below when you have a scenario
-      # this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",scenario,"_FlameLengths/",
-      #                                    "FireID_", this_season_fireIDs, ".tif")                                   
-      this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_FlameLengths/",
-      #                                    "FireID_", this_season_fireIDs, ".tif")
-      # Read in each fire and update the accumulators
-      for(fire in 1:length(this_season_AD_filenames)){
+      #Check whether any of the fire perimeters for this season overlap. The result is a matrix of logical outcomes.
+      overlap_matrix <- sf::st_intersects(season_fire_perims, sparse = FALSE)
+      #Use the function find_overlap_indices to determine which fires overlap with which other fires.
+      overlap_indices <- find_overlap_indices(overlap_matrix)
+      print(paste0("There are ",length(overlap_indices), " cases where fires overlap in season ", each_season, "."))
+      #If no fires overlap, use the merge_and_write_rasters function to export the 3-band season tif.
+      if(length(overlap_indices) == 0){
+        # Create empty accumulator rasters
+        accum_ID <- terra::rast(foa_lcp)
+        accum_AD <- terra::rast(foa_lcp)
+        accum_FL <- terra::rast(foa_lcp)
+        # Initialize accumulator rasters with NAs
+        terra::values(accum_ID) <- NA
+        terra::values(accum_AD) <- NA
+        terra::values(accum_FL) <- NA
+        # Create lists of the file names for the season
+        this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_ArrivalDays/",
+                                         this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_",
+                                         this_season_fireIDs, ".tif")
+        this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_FlameLengths/",
+                                         this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
+                                         this_season_fireIDs, ".tif")
+        # Read in each fire and update the accumulators
+        for(fire in 1:length(this_season_AD_filenames)){
+          # Check if both .tif files exist
+          if (!file.exists(this_season_AD_filenames[fire]) || !file.exists(this_season_FL_filenames[fire])) {
+            cat(sprintf("File does not exist for FireID %s: %s or %s\n",
+                  this_season_fireIDs[fire],
+                  this_season_AD_filenames[fire],
+                  this_season_FL_filenames[fire]))
+            next  # Skip to the next iteration if either file is missing
+        }
+        # If files exist, proceed to merge
         result <- merge_tifs_w_accumulator(this_season_AD_filenames[fire], this_season_FL_filenames[fire],
                                            this_season_fireIDs[fire], foa_lcp, accum_AD, accum_FL, accum_ID)
         accum_ID <- result$accum_ID
         accum_AD <- result$accum_AD
         accum_FL <- result$accum_FL
+        }
+        season_fires_raster_stack <- c(accum_ID, accum_AD, accum_FL)
+        names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
+        #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
+        #Write the resulting 3-band raster stack.
+        terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
+        rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack, foa_lcp)
+        gc()
       }
-      season_fires_raster_stack <- c(accum_ID, accum_AD, accum_FL)
-      names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
-      #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
-      #Write the resulting 3-band raster stack.
-      terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
-      rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack, foa_lcp)
-      gc()
-    } else if(length(overlap_indices) >= 1){ #If there's at least one case of overlap, use the function process_overlapping_fires.
-      process_overlapping_fires(each_season, this_season_fireIDs, this_season_foa_run, season_fire_perims, ref_sys, overlap_indices)
     }
+  } else if(length(overlap_indices) >= 1){ #If there's at least one case of overlap, use the function process_overlapping_fires.
+      process_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, this_season_scen, season_fire_perims, ref_sys, overlap_indices)
   }
 }
 
