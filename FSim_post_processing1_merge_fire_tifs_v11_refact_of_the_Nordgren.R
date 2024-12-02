@@ -485,7 +485,7 @@ process_fire_season <- function(each_season) {
       season_fire_perims <- sf::st_as_sf(season_fire_perims)
       #Plot to confirm they loaded correctly. There are multiple variables, so just plot the first (the object ID).
       #plot(season_fire_perims, col = "black", max.plot = 1)
-    
+      
       #Check whether any of the fire perimeters for this season overlap. The result is a matrix of logical outcomes.
       overlap_matrix <- sf::st_intersects(season_fire_perims, sparse = FALSE)
       #Use the function find_overlap_indices to determine which fires overlap with which other fires.
@@ -503,27 +503,27 @@ process_fire_season <- function(each_season) {
         terra::values(accum_FL) <- NA
         # Create lists of the file names for the season
         this_season_AD_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_ArrivalDays/",
-                                         this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_",
-                                         this_season_fireIDs, ".tif")
+                                           this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_",
+                                           this_season_fireIDs, ".tif")
         this_season_FL_filenames <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_FlameLengths/",
-                                         this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
-                                         this_season_fireIDs, ".tif")
+                                           this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
+                                           this_season_fireIDs, ".tif")
         # Read in each fire and update the accumulators
         for(fire in 1:length(this_season_AD_filenames)){
           # Check if both .tif files exist
           if (!file.exists(this_season_AD_filenames[fire]) || !file.exists(this_season_FL_filenames[fire])) {
             cat(sprintf("File does not exist for FireID %s: %s or %s\n",
-                  this_season_fireIDs[fire],
-                  this_season_AD_filenames[fire],
-                  this_season_FL_filenames[fire]))
+                        this_season_fireIDs[fire],
+                        this_season_AD_filenames[fire],
+                        this_season_FL_filenames[fire]))
             next  # Skip to the next iteration if either file is missing
-        }
-        # If files exist, proceed to merge
-        result <- merge_tifs_w_accumulator(this_season_AD_filenames[fire], this_season_FL_filenames[fire],
-                                           this_season_fireIDs[fire], foa_lcp, accum_AD, accum_FL, accum_ID)
-        accum_ID <- result$accum_ID
-        accum_AD <- result$accum_AD
-        accum_FL <- result$accum_FL
+          }
+          # If files exist, proceed to merge
+          result <- merge_tifs_w_accumulator(this_season_AD_filenames[fire], this_season_FL_filenames[fire],
+                                             this_season_fireIDs[fire], foa_lcp, accum_AD, accum_FL, accum_ID)
+          accum_ID <- result$accum_ID
+          accum_AD <- result$accum_AD
+          accum_FL <- result$accum_FL
         }
         season_fires_raster_stack <- c(accum_ID, accum_AD, accum_FL)
         names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
@@ -532,13 +532,13 @@ process_fire_season <- function(each_season) {
         terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
         rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack, foa_lcp)
         gc()
+      }else if(length(overlap_indices) >= 1){ #If there's at least one case of overlap, use the function process_overlapping_fires.
+        process_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, this_season_scen, season_fire_perims, ref_sys, overlap_indices)
       }
     }
-  } else if(length(overlap_indices) >= 1){ #If there's at least one case of overlap, use the function process_overlapping_fires.
-      process_overlaps(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, this_season_scen, season_fire_perims, ref_sys, overlap_indices)
-  }
+  } 
 }
-
+  
 #STEP 5: Process seasons in parallel across multiple cores
 #############################################################
 
