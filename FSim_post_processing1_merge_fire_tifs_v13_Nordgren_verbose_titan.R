@@ -515,11 +515,16 @@ process_fire_season <- function(each_season) {
     # and they will cause errors in the event of a record: off run where a previously run fire does not burn.
     this_season_fires_no_area <- this_season_fires %>% 
       dplyr::filter(Acres == 0)
-    print(paste0("Season ", this_season_fires_no_area$Season, " fire ", this_season_fires_no_area$FireID,
-                 "has a burned area of 0 acres."))
+    print(paste0("Season ", each_season, " fire ", this_season_fires_no_area$FireID,
+                 " has a burned area of 0 acres."))
     print("These fires will not be assessed for overburn.")
     this_season_fires <- this_season_fires %>%
       dplyr::filter(Acres > 0)
+    #Fetch vectors of run information from the filtered list of season fires
+    this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
+    this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
+    this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
+    this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
     con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", foa_run, "_", this_season_pt[1], "_Perimeters.sqlite"))
     query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
     season_fire_perims <- RSQLite::dbGetQuery(con, query1)
