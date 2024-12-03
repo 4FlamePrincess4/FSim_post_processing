@@ -206,18 +206,28 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
 ########################################################################################################################
 
 #Define a function to process a season with just one fire.
-process_single_fire_season <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt) {
+process_single_fire_season <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, this_season_scen) {
   print(paste0("There is only one fire in season ", each_season))
+  #Read in FOA lcp as a template raster
+  foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
+  foa_lcp <- terra::unwrap(foa_lcp)
   #Read in the AD and FL rasters
-  this_season_AD_filename <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_ArrivalDays/",
-                                     this_season_foa_run, "_", this_season_pt, "_ArrivalDays_FireID_",
+  this_season_AD_filename <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_ArrivalDays/",
+                                     this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_ArrivalDays_FireID_",
                                      this_season_fireIDs, ".tif")
   this_season_AD_stack <- terra::rast(this_season_AD_filename)
   #Use this info to read in the flame length tif filenames for this season's fires
-  this_season_FL_filename <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_FlameLengths/",
-                                     this_season_foa_run, "_", this_season_pt, "_FlameLengths_FireID_",
+  #De-comment the below when you have a scenario
+  this_season_FL_filename <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_FlameLengths/",
+                                     this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_FlameLengths_FireID_",
                                      this_season_fireIDs, ".tif")
   this_season_FL_stack <- terra::rast(this_season_FL_filename)
+  # Set CRS to match foa_lcp
+  terra::crs(this_season_AD_stack) <- terra::crs(foa_lcp)
+  terra::crs(this_season_FL_stack) <- terra::crs(foa_lcp)
+  # Extend rasters to match the extent of foa_lcp
+  this_season_AD_stack <- terra::extend(this_season_AD_stack, terra::ext(foa_lcp), snap="near")
+  this_season_FL_stack <- terra::extend(this_season_FL_stack, terra::ext(foa_lcp), snap="near")
   #Create the fire ID raster
   this_season_ID_stack <- terra::rast(nrows = nrow(this_season_AD_stack), ncols = ncol(this_season_AD_stack), ext = terra::ext(this_season_AD_stack), crs = terra::crs(this_season_AD_stack), vals = NA)
   this_season_fireIDs <- as.numeric(this_season_fireIDs)
@@ -233,8 +243,8 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
   names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
   #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
   #Write the resulting 3-band raster stack.
-  terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
-  rm(this_season_AD_stack, this_season_FL_stack, this_season_ID_stack, season_fires_raster_stack)
+  terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
+  rm(this_season_AD_stack, this_season_FL_stack, this_season_ID_stack, season_fires_raster_stack, foa_lcp)
   gc()
 }
 
