@@ -85,38 +85,34 @@ function(pattern) {
 }
 
 # Search for files matching the patterns in the target directories
-matched_files <- lapply(target_dirs, function(dir) {
+lapply(target_dirs, function(dir) {
   lapply(patterns, function(pattern) {
-    list.files(path = dir, pattern = pattern, full.names = TRUE)
+    # Search for files
+    matched_files <- list.files(path = dir, pattern = pattern, full.names = TRUE)
+    
+    # Convert matched_files (file paths) into a list of raster objects
+    foa_raster_list <- lapply(matched_files, raster)
+    
+    # Match CRS, origin, and extent to the study area raster
+    processed_rasters <- match_foas_to_study_area(foa_raster_list, okwen_crs, okwen_origin, okwen_extent)
+    
+    # Prepare arguments for raster::mosaic
+    names(processed_rasters)[1:2] <- c('x', 'y') # Rename for mosaic
+    processed_rasters$fun <- sum
+    processed_rasters$na.rm <- TRUE
+    processed_rasters$tolerance <- 4
+    
+    # Use raster::mosaic to merge the rasters
+    merged_raster <- do.call(raster::mosaic, processed_rasters)
+    
+    # Define the output filename
+    output_filename <- paste0(
+      merged_dir, "/okwen_", opt$run_timepoint, "_", opt$scenario, "_", 
+      gsub(".+FullRun_", "", gsub("\\.tif$", "", pattern)), "_merged.tif"
+    )
+    
+    # Save the merged raster
+    writeRaster(merged_raster, output_filename, format = "GTiff", overwrite = TRUE)
+    message(paste("Merged raster saved to:", output_filename))
   })
 })
-# Flatten the list of matched files into a single vector
-matched_files <- unlist(matched_files)
-
-# Print matched files for verification
-print(matched_files)
-  
-# Convert matched_files (file paths) into a list of raster objects
-foa_raster_list <- lapply(matched_files, raster)
-  
-# Match CRS, origin, and extent to the study area raster
-processed_rasters <- match_foas_to_study_area(foa_raster_list, okwen_crs, okwen_origin, okwen_extent)
-  
-# Prepare arguments for raster::mosaic
-names(processed_rasters)[1:2] <- c('x', 'y') # Rename for mosaic
-processed_rasters$fun <- sum
-processed_rasters$na.rm <- TRUE
-processed_rasters$tolerance <- 4
-  
-# Use raster::mosaic to merge the rasters
-merged_raster <- do.call(raster::mosaic, processed_rasters)
-  
-# Define the output filename based on the pattern
-output_filename <- paste0(
-  merged_dir, "/okwen_", opt$run_timepoint, "_", opt$scenario, "_", 
-  gsub(".+FullRun_", "", gsub("\\.tif$", "", pattern)), "_merged.tif"
-)
-  
-# Save the merged raster
-writeRaster(merged_raster, output_filename, format = "GTiff", overwrite = TRUE)
-message(paste("Merged raster saved to:", output_filename))
