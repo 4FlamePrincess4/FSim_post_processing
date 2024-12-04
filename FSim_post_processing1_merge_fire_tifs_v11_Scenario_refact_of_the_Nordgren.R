@@ -460,8 +460,6 @@ process_fire_season <- function(each_season) {
     terra::writeRaster(season_fires_raster_stack, filename = paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
     rm(no_fires_ID, no_fires_AD, no_fires_FL, season_fires_raster_stack, foa_lcp)
     gc()
-    # Skip further processing for this season
-    next
   }
   #Fetch vectors of other run information
   this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
@@ -502,8 +500,6 @@ process_fire_season <- function(each_season) {
       terra::writeRaster(season_fires_raster_stack, filename = paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
       rm(no_fires_ID, no_fires_AD, no_fires_FL, season_fires_raster_stack, foa_lcp)
       gc()
-      # Skip further processing for this season
-      next
     }
     if(nrow(this_season_fires) == 1){
       #Check for cases where, after filtering out fires with no burned area, there was only one fire left in the season.
