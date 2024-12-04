@@ -85,7 +85,7 @@ for (pattern in patterns) {
   # Define the output filename
   output_filename <- paste0(
   merged_dir, "/okwen_", opt$run_timepoint, "_", opt$scenario, "_", 
-  gsub("\\.\\*\\$", "", pattern), "_merged.tif"
+  sub(".*FullRun_", "FullRun_", sub("\\\\.tif\\$", "", pattern)), "_merged.tif"
 )
   
   # Save the merged raster
