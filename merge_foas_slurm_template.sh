@@ -22,7 +22,7 @@ module load miniconda
 source activate r_env2
 
 #Run the R script
-/home/laurel.sindewald/.conda/envs/r_env2/bin/Rscript FSim_post_processing4_merge_foas.R \
+/home/laurel.sindewald/.conda/envs/r_env2/bin/Rscript FSim_post_processing4_merge_FOAs.R \
 --working_directory /project/wildland_fire_smoke_tradeoff/ \
 --scenario LF2022_RecOff3 \
 --run_timepoint time2 \
