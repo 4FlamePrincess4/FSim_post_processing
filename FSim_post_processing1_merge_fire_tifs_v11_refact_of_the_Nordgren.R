@@ -459,6 +459,8 @@ process_fire_season <- function(each_season) {
     terra::writeRaster(season_fires_raster_stack, filename = paste0("./SeasonFires_merged_tifs","/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
     rm(no_fires_ID, no_fires_AD, no_fires_FL, season_fires_raster_stack, foa_lcp)
     gc()
+    # Exit the function
+    return(invisible(NULL))
   }
   #Fetch vectors of other run information
   this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
