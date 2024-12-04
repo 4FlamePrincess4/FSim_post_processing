@@ -591,8 +591,7 @@ process_single_season <- function(each_season) {
   process_fire_season(each_season)
 }
 
-unique_seasons <- unique(firelists$Season)
-unique_seasons <- unique_seasons[unique_seasons >= opt$first_season & unique_seasons <= opt$last_season]
+unique_seasons <- opt$first_season:opt$last_season
 print(paste("Processing seasons:", paste(unique_seasons, collapse = ", ")))
 
 # Set up logger
