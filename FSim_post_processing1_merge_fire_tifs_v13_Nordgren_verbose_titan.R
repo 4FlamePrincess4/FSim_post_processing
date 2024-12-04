@@ -653,7 +653,7 @@ process_single_season <- function(each_season) {
   process_fire_season(each_season)
 }
 
-unique_seasons <- unique(firelists$Season)
+unique_seasons <- 1:20000
 
 # Set up logger
 start_logging("merge_tifs_captains_log.txt")
