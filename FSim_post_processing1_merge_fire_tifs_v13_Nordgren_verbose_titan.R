@@ -515,27 +515,57 @@ process_fire_season <- function(each_season) {
     rm(no_fires_ID, no_fires_AD, no_fires_FL, season_fires_raster_stack, foa_lcp)
     gc()
     # Exit the function
-      return(invisible(NULL))
+    return(invisible(NULL))
   }
+ 
   #Fetch vectors of other run information
   this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
   this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
   this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
   this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
-  #If there is one or fewer fires in the season, use the process_single_fire_season function 
-  if(length(this_season_fireIDs) == 0){
-    print(paste0("Season ", each_season, " had 0 fires. An empty placeholder raster will be saved."))
-    # Create empty raster
-    foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
-    foa_lcp <- terra::unwrap(foa_lcp)
-    no_fires_raster <- terra::rast(foa_lcp)
-    terra::values(no_fires_raster) <- NA
-  }
+  
   if(length(this_season_fireIDs) == 1){
+    #Determine whether any of the fires have an area burned of 0 acres.
+    #These should be removed because they will not contribute to overburn, 
+    # and they will cause errors in the event of a record: off run where a previously run fire does not burn.
+    this_season_fires_no_area <- this_season_fires %>% 
+      dplyr::filter(Acres == 0)
+    if(nrow(this_season_fires_no_area) > 0){
+      print(paste0("Season ", each_season, " fire ", this_season_fires_no_area$FireID,
+                 " has a burned area of 0 acres."))
+      print("These fires will not be assessed for overburn.")
+    }
+    this_season_fires <- this_season_fires %>%
+      dplyr::filter(Acres > 0)
+    if(nrow(this_season_fires) == 0){
+      print(paste0("Season ", each_season, " had 0 fires after filtering out fires with no burned area. An empty placeholder raster will be saved."))
+      # Create empty raster
+      foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
+      foa_lcp <- terra::unwrap(foa_lcp)
+      no_fires_ID <- terra::rast(foa_lcp)
+      no_fires_AD <- terra::rast(foa_lcp)
+      no_fires_FL <- terra::rast(foa_lcp)
+      terra::values(no_fires_ID) <- NA
+      terra::values(no_fires_AD) <- NA
+      terra::values(no_fires_FL) <- NA
+      season_fires_raster_stack <- c(no_fires_ID, no_fires_AD, no_fires_FL)
+      names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
+      # Save the empty raster (optional, based on your workflow)
+      terra::writeRaster(season_fires_raster_stack, filename = paste0("./SeasonFires_merged_tifs","/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
+      rm(no_fires_ID, no_fires_AD, no_fires_FL, season_fires_raster_stack, foa_lcp)
+      gc()
+      # Exit the function
+      return(invisible(NULL))
+    }
+    #Fetch vectors of other run information
+  this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
+  this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
+  this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
+  this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
     process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt)
   } 
   if(length(this_season_fireIDs) >=2){ #Otherwise, read in the perimeters sqlite database and fetch this season's fire perimeters
-    #Determine whether any of the fires have an area burned of 0 acres.
+     #Determine whether any of the fires have an area burned of 0 acres.
     #These should be removed because they will not contribute to overburn, 
     # and they will cause errors in the event of a record: off run where a previously run fire does not burn.
     this_season_fires_no_area <- this_season_fires %>% 
