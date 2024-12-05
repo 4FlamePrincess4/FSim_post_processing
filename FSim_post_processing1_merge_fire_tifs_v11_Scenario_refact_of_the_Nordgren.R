@@ -463,17 +463,7 @@ process_fire_season <- function(each_season) {
     # Exit the function
     return(invisible(NULL))
   }
-  #Fetch vectors of other run information
-  this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
-  this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
-  this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
-  this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
-  #If there is one or fewer fires in the season, use the process_single_fire_season function 
-  if(length(this_season_fireIDs) == 1){
-    process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt,this_season_scen)
-  } 
-  if(length(this_season_fireIDs) >=2){ #Otherwise, read in the perimeters sqlite database and fetch this season's fire perimeters
-    #Determine whether any of the fires have an area burned of 0 acres.
+  #Determine whether any of the fires have an area burned of 0 acres.
     #These should be removed because they will not contribute to overburn, 
     # and they will cause errors in the event of a record: off run where a previously run fire does not burn.
     this_season_fires_no_area <- this_season_fires %>% 
@@ -505,22 +495,23 @@ process_fire_season <- function(each_season) {
       # Exit the function
       return(invisible(NULL))
     }
+  #Fetch vectors of other run information
+  this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
+  this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
+  this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
+  this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
+  #If there is one or fewer fires in the season, use the process_single_fire_season function 
+  if(length(this_season_fireIDs) == 1){
+    process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt,this_season_scen)
+  } 
+  if(length(this_season_fireIDs) >=2){ #Otherwise, read in the perimeters sqlite database and fetch this season's fire perimeters
+    
     if(nrow(this_season_fires) == 1){
       #Check for cases where, after filtering out fires with no burned area, there was only one fire left in the season.
-      #Fetch vectors of run information from the filtered list of season fires
-      this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
-      this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
-      this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
-      this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
       process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt,this_season_scen)
     } 
     if(nrow(this_season_fires) >=2) {
       #Check for cases where, after filtering out fires with no burned area, there are still 2 or more fires left in the season. Now you can check for overlap and delete overburn.
-      #Fetch vectors of run information from the filtered list of season fires
-      this_season_fireIDs <- as.character(unique(this_season_fires$FireID))
-      this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
-      this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
-      this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
       con <- RSQLite::dbConnect(RSQLite::SQLite(), dbname = paste0(wd,"/", opt$foa_run, "_", this_season_pt[1], "_", opt$scenario, "_Perimeters.sqlite"))
       query1 <- paste("SELECT * FROM perimeters WHERE fire_id IN (", toString(this_season_fireIDs),")")
       season_fire_perims <- RSQLite::dbGetQuery(con, query1)
