@@ -22,3 +22,17 @@ mkdir ../okwen_foa1c_r16_LF2022_RecOff3_2/SeasonFires_merged_tifs_LF2022_RecOff3
 # Activate conda environment
 module load miniconda
 source activate r_env2
+
+# Run the R script
+/home/laurel.sindewald/.conda/envs/r_env2/bin/Rscript FSim_post_processing1_merge_fire_tifs_v11_Scenario_refact_of_the_Nordgren.R
+--foa_lcp_path ./_inputs/lcp/lf2022_230_foa1c_120m.tif \
+--working_directory /project/wildland_fire_smoke_tradeoff/okwen_foa1c_r16_LF2022_RecOff3_2/ \
+--foa_run foa1c_r16 \
+--scenario LF2022_RecOff3_2 \
+--run_timepoint time2 \
+--number_of_seasons 20000 \
+--seasons_in_part 5000 \
+--number_of_parts 4 \
+--first_season 1 \
+--last_season 20000 \
+--merge_fires_part LF2022_RecOff3_2
