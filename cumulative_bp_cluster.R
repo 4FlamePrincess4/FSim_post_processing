@@ -1,7 +1,6 @@
 library(tidyverse)
 library(terra)
 library(tidyterra)
-library(furrr)
 library(optparse)
 
 #Set up input arguments with optparse
