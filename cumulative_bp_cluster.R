@@ -49,7 +49,7 @@ colnames(cumulative_bp_df) <- paste0("pix", 1:opt$num_random_pixels)
 seasons <- opt$first_season:opt$last_season
 for(season in seasons){
   #Read in SeasonFire raster
-  this_season_rast <- rast(paste0(wd, "SeasonFires_merged_tifs_", scenario, "/Season", season, "_merged_IDs_ADs_FLs.tif"), lyr=1)
+  this_season_rast <- rast(paste0(wd, "SeasonFires_merged_tifs_", opt$scenario, "/Season", season, "_merged_IDs_ADs_FLs.tif"), lyr=1)
   # Create a binary mask where overlapping pixels are 1, else 0
   binary_mask <- ifel(!is.na(this_season_rast), 1, 0)
   # Add the binary mask to lcp, ensuring only one increment per overlapping pixel
