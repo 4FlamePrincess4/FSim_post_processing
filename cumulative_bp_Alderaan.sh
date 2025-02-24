@@ -7,8 +7,8 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=64
-#SBATCH --output=FOA1c_r16_2020_cumulative_bp_slurmlog_%A.out
-#SBATCH --error=FOA1c_r16_2020_cumulative_bp_error_%A.log
+#SBATCH --output=/data001/projects/sindewal/okawen_foa2d_r5_LF2020_2/FOA1c_r16_2020_cumulative_bp_slurmlog_%A.out
+#SBATCH --error=/data001/projects/sindewal/okawen_foa2d_r5_LF2020_2/FOA1c_r16_2020_cumulative_bp_error_%A.log
 #SBATCH --mail-user=laurel.sindewald@ucdenver.edu
 #SBATCH --mail-type=BEGIN
 #SBATCH --mail-type=END
