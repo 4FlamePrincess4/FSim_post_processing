@@ -73,4 +73,5 @@ long_df <- cumulative_bp_df %>%
 
 #Export the dataframe
 write_csv(long_df, paste0("./cumulative_bp_", opt$num_random_pixels, "_pixels_", opt$foa_run, "_", opt$scenario, ".csv"))
-
+#Export the vector of random pixels
+write_csv(random_pixels, paste0("./cumulative_bp_vector_of_", opt$num_random_pixels, "_pixels_", opt$foa_run, "_", opt$scenario, ".csv"))
