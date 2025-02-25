@@ -72,5 +72,5 @@ long_df <- cumulative_bp_df %>%
                values_to = "burn_prob")
 
 #Export the dataframe
-write_csv(long_df, "./cumulative_bp_", opt$num_random_pixels, "_pixels_", opt$foa_run, "_", opt$scenario, ".csv")
+write_csv(long_df, paste0("./cumulative_bp_", opt$num_random_pixels, "_pixels_", opt$foa_run, "_", opt$scenario, ".csv"))
 
