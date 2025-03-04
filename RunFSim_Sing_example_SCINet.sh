@@ -3,7 +3,7 @@
 ## This is code to run the script that launches FSim within the firemodels.sif container
 
 #SBATCH --job-name=F122ROp1
-#SBATCH --partition=medium
+#SBATCH --partition=ceres
 #SBATCH --time=07-00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=96
