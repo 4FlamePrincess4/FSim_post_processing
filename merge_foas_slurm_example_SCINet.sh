@@ -3,7 +3,7 @@
 # sed -i -e 's/\r$//' merge_run_parts_slurm_template.sh
 
 #SBATCH --job-name=122RO3_merge_foas
-#SBATCH --partition=short
+#SBATCH --partition=ceres
 #SBATCH --time=02-00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=96
