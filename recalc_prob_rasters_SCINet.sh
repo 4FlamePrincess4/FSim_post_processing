@@ -2,13 +2,13 @@
 # Note: Before running this on Linux, you'll need to run this line to remove stupid Windows characters:
 # sed -i -e 's/\r$//' rename_tifs.sh
 
-#SBATCH --job-name=122RO3con
+#SBATCH --job-name=122RO3recalc
 #SBATCH --partition=ceres
 #SBATCH --time=02-00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=96
-#SBATCH --output=/project/wildland_fire_smoke_tradeoff/okwen_foa1c_r16_LF2022_RecOff3_2/FOA1c_r16_2022_RecOff3_2_comb_tifs_slurmlog_%A.out
-#SBATCH --error=/project/wildland_fire_smoke_tradeoff/okwen_foa1c_r16_LF2022_RecOff3_2/FOA1c_r16_2022_RecOff3_2_comb_tifs_error_%A.log
+#SBATCH --output=/project/wildland_fire_smoke_tradeoff/okwen_foa1c_r16_LF2022_RecOff3_2/FOA1c_r16_2022_RecOff3_2_recalc_prob_rasters_slurmlog_%A.out
+#SBATCH --error=/project/wildland_fire_smoke_tradeoff/okwen_foa1c_r16_LF2022_RecOff3_2/FOA1c_r16_2022_RecOff3_2_recalc_prob_rasters_error_%A.log
 #SBATCH --mail-user=laurel.sindewald@usda.gov
 #SBATCH --mail-type=BEGIN
 #SBATCH --mail-type=END
