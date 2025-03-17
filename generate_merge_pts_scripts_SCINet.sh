@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./generate_merge_pts_scripts.sh <study_area> <foa_run> <scenario> <run_timepoint> <job_name> <num_seasons> <seasons_in_part> <num_parts>
+# Usage: ./generate_merge_pts_scripts_SCINet.sh <study_area> <foa_run> <scenario> <run_timepoint> <job_name> <num_seasons> <seasons_in_part> <num_parts>
 
 if [ "$#" -ne 8 ]; then
     echo "Usage: $0 <study_area> <foa_run> <scenario> <run_timepoint> <job_name> <num_seasons> <seasons_in_part> <num_parts>"
