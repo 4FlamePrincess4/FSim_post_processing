@@ -48,19 +48,17 @@ source activate r_env2
 
 # Run the R script
 /home/laurel.sindewald/.conda/envs/r_env2/bin/Rscript FSim_post_processing1_merge_fire_tifs_v11_Scenario_refact_of_the_Nordgren.R
---foa_lcp_path ./${foa_lcp} \
---working_directory ${output_dir}/ \
---foa_run ${foa_run} \
---scenario ${scenario} \
---run_timepoint ${run_timepoint} \
---number_of_seasons ${num_seasons} \
---seasons_in_part ${seasons_in_part} \
---number_of_parts ${num_parts} \
---first_season 1 \
---last_season 20000 \
+--foa_lcp_path ./${foa_lcp} \\
+--working_directory ${output_dir}/ \\
+--foa_run ${foa_run} \\
+--scenario ${scenario} \\
+--run_timepoint ${run_timepoint} \\
+--number_of_seasons ${num_seasons} \\
+--seasons_in_part ${seasons_in_part} \\
+--number_of_parts ${num_parts} \\
+--first_season 1 \\
+--last_season 20000 \\
 --merge_fires_part ${scenario}_${run_timepoint}
 EOL
-
-done
 
 echo "Generated SLURM script to combine tifs (and delete overburn) for ${study_area} ${foa_run}, scenario ${scenario}, run timepoint ${run_timepoint}."
