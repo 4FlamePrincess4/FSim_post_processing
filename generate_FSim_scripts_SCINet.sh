@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./generate_FSim_Sing_scripts.sh <foa_run> <scenario> <run_timepoint> <num_parts> <study_area>
+# Usage: ./generate_FSim_scripts.sh <foa_run> <scenario> <run_timepoint> <num_parts> <study_area>
 
 if [ "$#" -ne 5 ]; then
     echo "Usage: $0 <foa_run> <scenario> <run_timepoint> <num_parts> <study_area>"
