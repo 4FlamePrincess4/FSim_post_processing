@@ -2,7 +2,7 @@
 
 # Usage: ./generate_rename_tifs_scripts.sh <study_area> <foa_run> <scenario> <run_timepoint> <job_name>
 
-if [ "$#" -ne 6 ]; then
+if [ "$#" -ne 5 ]; then
     echo "Usage: $0 <study_area> <foa_run> <scenario> <run_timepoint> <job_name>"
     exit 1
 fi
