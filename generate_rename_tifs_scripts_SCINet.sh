@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./generate_rename_tifs_scripts.sh <study_area> <foa_run> <scenario> <run_timepoint> <job_name>
+# Usage: ./generate_rename_tifs_scripts_SCINet.sh <study_area> <foa_run> <scenario> <run_timepoint> <job_name>
 
 if [ "$#" -ne 5 ]; then
     echo "Usage: $0 <study_area> <foa_run> <scenario> <run_timepoint> <job_name>"
