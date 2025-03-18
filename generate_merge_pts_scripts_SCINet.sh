@@ -44,16 +44,14 @@ module load miniconda
 source activate r_env2
 
 #Run the R script
-/home/laurel.sindewald/.conda/envs/r_env2/bin/Rscript FSim_post_processing2_merge_run_parts.R \
---working_directory ${output_dir}/ \
---foa_run ${foa_run} \
---scenario ${scenario} \
---run_timepoint ${run_timepoint} \
---number_of_seasons ${num_seasons} \
---seasons_in_part ${seasons_in_part} \
+/home/laurel.sindewald/.conda/envs/r_env2/bin/Rscript FSim_post_processing2_merge_run_parts.R \\
+--working_directory ${output_dir}/ \\
+--foa_run ${foa_run} \\
+--scenario ${scenario} \\
+--run_timepoint ${run_timepoint} \\
+--number_of_seasons ${num_seasons} \\
+--seasons_in_part ${seasons_in_part} \\
 --number_of_parts ${num_parts}
 EOL
-
-done
 
 echo "Generated SLURM script to merge run parts for ${study_area} ${foa_run}, scenario ${scenario}, run timepoint ${run_timepoint}."
