@@ -23,7 +23,7 @@ setwd(opt$working_directory)
 wd <- getwd()
 
 #List the SeasonFire raster paths
-season_fire_files <- list.files(path = paste0("./SeasonFires_merged_tifs_", opt$scenario),
+season_fire_files <- list.files(path = paste0("./SeasonFires_merged_tifs_", opt$scenario, "_", opt$run_timepoint),
                                 pattern = ".tif$", full.names=TRUE)
 
 #Create a SpatRaster dataset
