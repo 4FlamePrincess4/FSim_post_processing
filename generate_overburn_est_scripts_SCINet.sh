@@ -46,17 +46,15 @@ module load miniconda
 source activate r_env2
 
 # Run the R script
-/home/laurel.sindewald/.conda/envs/r_env2/bin/Rscript FSim_post_processing5_summarize_overburn_removed_Alderaan.R \
---working_directory ${output_dir}/ \
---season_fires_directory ./SeasonFires_merged_tifs_${scenario}_${run_timepoint}/ \
---foa_run ${foa_run} \
---scenario ${scenario} \
---run_timepoint ${run_timepoint} \
---number_of_seasons ${num_seasons} \
---seasons_in_part ${seasons_in_part} \
+/home/laurel.sindewald/.conda/envs/r_env2/bin/Rscript FSim_post_processing5_summarize_overburn_removed_Alderaan.R \\
+--working_directory ${output_dir}/ \\
+--season_fires_directory ./SeasonFires_merged_tifs_${scenario}_${run_timepoint}/ \\
+--foa_run ${foa_run} \\
+--scenario ${scenario} \\
+--run_timepoint ${run_timepoint} \\
+--number_of_seasons ${num_seasons} \\
+--seasons_in_part ${seasons_in_part} \\
 --number_of_parts ${num_parts}
 EOL
-
-done
 
 echo "Generated SLURM script to estimate overburn for ${study_area} ${foa_run}, scenario ${scenario}, run timepoint ${run_timepoint}."
