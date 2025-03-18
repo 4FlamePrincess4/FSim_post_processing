@@ -41,34 +41,34 @@ root_directory="/project/wildland_fire_smoke_tradeoff/${study_area}_${foa_run}_$
 exec 1>&2
 
 # Check if the root directory exists
-if [ ! -d "$root_directory" ]; then
-    echo "Error: Directory '$root_directory' does not exist."
+if [ ! -d "\$root_directory" ]; then
+    echo "Error: Directory '\$root_directory' does not exist."
     exit 1
 fi
 
 # Find all subdirectories ending in ArrivalDays or FlameLengths
-find "$root_directory" -type d \( -name "*ArrivalDays" -o -name "*FlameLengths" \) | while read -r subdir; do
+find "\$root_directory" -type d \( -name "*ArrivalDays" -o -name "*FlameLengths" \) | while read -r subdir; do
     # Get the base name of the subdirectory
-    current_dir=$(basename "$subdir")
+    current_dir=\$(basename "\$subdir")
     
     # Loop through each file in the current subdirectory
-    for file in "$subdir"/*; do
+    for file in "\$subdir"/*; do
         # Check if the file is a regular file and exclude directories
-        if [ -f "$file" ] && [[ ! "$file" =~ _$ ]]; then
+        if [ -f "\$file" ] && [[ ! "\$file" =~ _\$ ]]; then
             # Get the base name of the file (without directory path)
-            base_file=$(basename "$file")
+            base_file=\$(basename "\$file")
             # Calculate the length of the filename (including the extension)
-            filename_length=${#base_file}
+            filename_length=\${#base_file}
             # Check if the filename (including extension) is less than 26 characters
-            if [ "$filename_length" -lt 26 ]; then
+            if [ "\$filename_length" -lt 26 ]; then
                 # New filename with parent directory name appended
-                new_filename="${current_dir}_$base_file"
+                new_filename="\${current_dir}_\$base_file"
                 # Rename the file by appending parent directory name and underscore to the beginning
-                mv "$file" "$subdir/$new_filename"
+                mv "\$file" "\$subdir/\$new_filename"
                 # Print the resulting filename
-                echo "Renamed '$base_file' to '$new_filename' in '$subdir'"
+                echo "Renamed '\$base_file' to '\$new_filename' in '\$subdir'"
             else
-                echo "Skipped '$base_file' in '$subdir' (filename length >= 26)"
+                echo "Skipped '\$base_file' in '\$subdir' (filename length >= 26)"
             fi
         fi
     done
@@ -76,7 +76,5 @@ done
 
 echo "Done renaming files in ArrivalDays and FlameLengths subdirectories!"
 EOL
-
-done
 
 echo "Generated SLURM script to rename tifs for ${study_area} ${foa_run}, scenario ${scenario}, run timepoint ${run_timepoint}."
