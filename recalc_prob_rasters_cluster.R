@@ -14,30 +14,27 @@ option_list = list(
   make_option(c("-t", "--run_timepoint"), type="character", default=NULL,
               help="timepoint for the scenario (mandatory)", metavar="character")
 )
-# parse the command-line options
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 
-#Set the working directory to the specific outputs folder for the run
+#Set working directory
 setwd(opt$working_directory)
 wd <- getwd()
 
-#List the SeasonFire raster paths
-season_fire_files <- list.files(path = paste0("./SeasonFires_merged_tifs_", opt$scenario, "_", opt$run_timepoint),
-                                pattern = ".tif$", full.names=TRUE)
+#List SeasonFire raster paths
+season_fire_files <- list.files(
+  path = paste0("./SeasonFires_merged_tifs_", opt$scenario, "_", opt$run_timepoint),
+  pattern = ".tif$", full.names=TRUE
+)
 
-#Create a SpatRaster dataset
-season_fire_rasters <- rast(lapply(season_fire_files, function(f) rast(f, lyr=1)))
+# Use a virtual raster to avoid loading all into memory
+season_fire_rasters <- vrt(season_fire_files)
 
-#Compute the propoprtion of non-NA values per cell to get at burn probability (# times burned/total)
-prop_non_na <- app(season_fire_rasters, function(x) mean(!is.na(x)))
+#Compute burn probability
+prop_non_na <- app(season_fire_rasters, function(x) mean(!is.na(x)), filename=paste0("./recalc_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_burn_probability.tif"), overwrite=TRUE)
 names(prop_non_na) <- "burn_probability"
 
-#Write this burn probability raster
-writeRaster(prop_non_na, paste0("./recalc_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_burn_probability.tif"))
-
-#Let's do the same for the flame length probabilities
-# Define flame length categories
+# Process flame length probabilities efficiently
 categories <- list(
   "0_2"   = c(0, 2),
   "2_4"   = c(2, 4),
@@ -47,30 +44,25 @@ categories <- list(
   "12plus" = c(12, Inf)
 )
 
-# Extract the third band (flame length data)
-flame_length_rasters <- rast(lapply(season_fire_files, function(f) rast(f, lyr = 3)))
-
-# Compute the total number of times a cell is not NA
-non_na_count <- app(flame_length_rasters, function(x) sum(!is.na(x)))
-
-# Compute probability rasters for each category
-probability_rasters <- lapply(names(categories), function(cat) {
+# Process flame length band (3rd band)
+for (cat in names(categories)) {
   bounds <- categories[[cat]]
   
-  # Count how many times each cell falls into this category
-  category_count_raster <- app(flame_length_rasters, function(x) {
-    sum(x >= bounds[1] & x < bounds[2], na.rm = TRUE)
-  })
+  # Process each raster file one at a time
+  category_count_list <- vector("list", length(season_fire_files))
   
-  # Compute proportion raster
-  probability_raster <- category_count_raster / non_na_count
+  for (i in seq_along(season_fire_files)) {
+    r <- rast(season_fire_files[i], lyr=3) # Load only 3rd band
+    category_count_list[[i]] <- app(r, function(x) sum(x >= bounds[1] & x < bounds[2], na.rm = TRUE), filename=paste0("temp_", i, ".tif"), overwrite=TRUE)
+  }
   
-  return(probability_raster)
-})
+  # Merge counts across all files
+  category_count_raster <- tapp(rast(category_count_list), sum, filename=paste0("recalc_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_cflp_flame_length_", cat, ".tif"), overwrite=TRUE)
 
-# Calculate the unconditional flp rasters and save both conditional & unconditional versions
-for(i in seq_along(probability_rasters)) {
-  writeRaster(probability_rasters[[i]], paste0("recalc_", foa_run, "_", scenario, "_", opt$run_timepoint, "_cflp_flame_length_", names(categories)[i], ".tif"), overwrite = TRUE)
-  unconditional_flp <- probability_rasters[[i]]*prop_non_na
-  writeRaster(unconditional_flp, paste0("recalc_", foa_run, "_", scenario, "_", opt$run_timepoint, "_flp_flame_length_", names(categories)[i], ".tif"), overwrite = TRUE)
+  # Compute probability
+  probability_raster <- category_count_raster / prop_non_na
+  writeRaster(probability_raster, paste0("recalc_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_flp_flame_length_", cat, ".tif"), overwrite=TRUE)
+  
+  # Cleanup temporary files
+  file.remove(list.files(pattern="temp_.*tif$"))
 }
