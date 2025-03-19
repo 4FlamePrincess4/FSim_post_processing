@@ -49,16 +49,27 @@ for (cat in names(categories)) {
   bounds <- categories[[cat]]
   
   # Process each raster file one at a time
-  category_count_list <- vector("list", length(season_fire_files))
+  category_count_list <- list()
   
   for (i in seq_along(season_fire_files)) {
     r <- rast(season_fire_files[i], lyr=3) # Load only 3rd band
-    category_count_list[[i]] <- app(r, function(x) sum(x >= bounds[1] & x < bounds[2], na.rm = TRUE), filename=paste0("temp_", i, ".tif"), overwrite=TRUE)
+    
+    # Fix: Use a function that returns a single value per pixel
+    category_count_raster <- app(r, function(x) { 
+      ifelse(is.na(x), NA, sum(x >= bounds[1] & x < bounds[2])) 
+    })
+    
+    # Save the result and add to the list
+    filename_temp <- paste0("temp_", i, ".tif")
+    writeRaster(category_count_raster, filename_temp, overwrite=TRUE)
+    category_count_list[[i]] <- rast(filename_temp)
   }
   
-  # Merge counts across all files
-  category_count_raster <- tapp(rast(category_count_list), sum, filename=paste0("recalc_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_cflp_flame_length_", cat, ".tif"), overwrite=TRUE)
-
+  # Merge counts across all files using tapp()
+  category_count_raster <- tapp(rast(category_count_list), fun=sum, 
+                                filename=paste0("recalc_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_cflp_flame_length_", cat, ".tif"),
+                                overwrite=TRUE)
+  
   # Compute probability
   probability_raster <- category_count_raster / prop_non_na
   writeRaster(probability_raster, paste0("recalc_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_flp_flame_length_", cat, ".tif"), overwrite=TRUE)
@@ -66,3 +77,4 @@ for (cat in names(categories)) {
   # Cleanup temporary files
   file.remove(list.files(pattern="temp_.*tif$"))
 }
+
