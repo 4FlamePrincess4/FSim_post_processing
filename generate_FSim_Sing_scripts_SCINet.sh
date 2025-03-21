@@ -23,7 +23,7 @@ for part in $(seq 1 $num_parts); do
     cat > "$slurm_script" <<EOL
 #!/bin/bash
 
-#SBATCH --job-name=${job_name}
+#SBATCH --job-name=${job_name}${part}
 #SBATCH --partition=ceres
 #SBATCH --time=07-00:00
 #SBATCH --nodes=1
