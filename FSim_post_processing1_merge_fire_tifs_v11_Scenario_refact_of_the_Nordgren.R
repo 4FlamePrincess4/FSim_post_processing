@@ -207,14 +207,14 @@ merge_tifs_w_accumulator <- function(arrival_day_path, flame_length_path, fire_i
 ########################################################################################################################
 
 #Define a function to process a season with just one fire.
-process_single_fire_season <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, this_season_scen,this_season_time) {
+process_single_fire_season <- function(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt, this_season_scen, this_season_time) {
   print(paste0("There is only one fire in season ", each_season))
   #Read in FOA lcp as a template raster
   foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs = 1)
   foa_lcp <- terra::unwrap(foa_lcp)
   #Read in the AD and FL rasters
-  this_season_AD_filename <- paste0(wd,"/",this_season_foa_run,"_",this_season_pt,"_", this_season_scen,"_",this_season_time,"_ArrivalDays/",
-                                     this_season_foa_run, "_", this_season_pt, "_", this_season_scen,"_",this_season_time, "_ArrivalDays_FireID_",
+  this_season_AD_filename <- paste0(wd,"/",this_season_foa_run, "_", this_season_pt,"_", this_season_scen, "_", this_season_time,"_ArrivalDays/",
+                                     this_season_foa_run, "_", this_season_pt, "_", this_season_scen, "_", this_season_time, "_ArrivalDays_FireID_",
                                      this_season_fireIDs, ".tif")
   this_season_AD_stack <- terra::rast(this_season_AD_filename)
   #Use this info to read in the flame length tif filenames for this season's fires
