@@ -47,9 +47,9 @@ module load miniconda
 source activate r_env2
 
 # Run the R script
-/home/laurel.sindewald/.conda/envs/r_env2/bin/Rscript FSim_post_processing1_merge_fire_tifs_v11_Scenario_refact_of_the_Nordgren.R
+/home/laurel.sindewald/.conda/envs/r_env2/bin/Rscript FSim_post_processing1_merge_fire_tifs_v11_Scenario_refact_of_the_Nordgren.R \\
 --foa_lcp_path ${foa_lcp} \\
---working_directory ${output_dir}/ \\
+--working_directory ${output_dir} \\
 --foa_run ${foa_run} \\
 --scenario ${scenario} \\
 --run_timepoint ${run_timepoint} \\
