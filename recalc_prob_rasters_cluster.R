@@ -36,7 +36,7 @@ names(prop_non_na) <- "burn_probability"
 
 # Create a temporary directory for storing intermediate tifs
 temp_dir <- file.path(wd, "temp_tifs")
-dir.create(temp_dir, showWarnings = FALSE)
+dir.create(temp_dir)
 
 # Process flame length probabilities efficiently
 categories <- list(
