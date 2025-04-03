@@ -27,10 +27,11 @@ season_fire_files <- list.files(path = paste0("./SeasonFires_merged_tifs_", opt$
                                 pattern = ".tif$", full.names=TRUE)
 
 #Create a SpatRaster dataset
-season_fire_rasters <- rast(season_fire_files)
+season_fire_rasters <- rast(lapply(season_fire_files, function(f) rast(f, lyr=1)))
 
 #Compute the propoprtion of non-NA values per cell to get at burn probability (# times burned/total)
 prop_non_na <- app(season_fire_rasters, function(x) mean(!is.na(x)))
+names(prop_non_na) <- "burn_probability"
 
 #Write this burn probability raster
 writeRaster(prop_non_na, paste0("./recalc_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_burn_probability.tif"))
@@ -47,17 +48,24 @@ categories <- list(
 )
 
 # Extract the third band (flame length data)
-flame_length_rasters <- season_fire_rasters[[3]]
+flame_length_rasters <- rast(lapply(season_fire_files, function(f) rast(f, lyr = 3)))
 
-# Function to calculate the probability of flame lengths falling into each category
-compute_category_proportion <- function(x, lower, upper) {
-  mean(x >= lower & x < upper, na.rm = TRUE)  # Proportion of times within range
-}
+# Compute the total number of times a cell is not NA
+non_na_count <- app(flame_length_rasters, function(x) sum(!is.na(x)))
 
-# Compute conditional flame length probability rasters for each category
+# Compute probability rasters for each category
 probability_rasters <- lapply(names(categories), function(cat) {
   bounds <- categories[[cat]]
-  app(flame_length_rasters, function(x) compute_category_proportion(x, bounds[1], bounds[2]))
+  
+  # Count how many times each cell falls into this category
+  category_count_raster <- app(flame_length_rasters, function(x) {
+    sum(x >= bounds[1] & x < bounds[2], na.rm = TRUE)
+  })
+  
+  # Compute proportion raster
+  probability_raster <- category_count_raster / non_na_count
+  
+  return(probability_raster)
 })
 
 # Calculate the unconditional flp rasters and save both conditional & unconditional versions
