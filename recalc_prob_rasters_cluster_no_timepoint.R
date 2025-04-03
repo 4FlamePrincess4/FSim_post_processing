@@ -36,7 +36,7 @@ names(prop_non_na) <- "burn_probability"
 
 # Create a temporary directory for storing intermediate tifs
 temp_dir <- file.path(wd, "temp_tifs")
-dir.create(temp_dir)
+dir.create("temp_dir")
 
 # Process flame length probabilities efficiently
 categories <- list(
@@ -60,11 +60,11 @@ for (cat in names(categories)) {
     
     # Fix: Use a function that returns a single value per pixel
     category_count_raster <- app(r, function(x) { 
-      ifelse(is.na(x), NA, sum(x >= bounds[1] & x < bounds[2])) 
+      ifelse(is.na(x), NA, sum(x >= bounds[1] & x < bounds[2], na.rm=TRUE)) 
     })
     
     # Save the result and add to the list
-    filename_temp <- file.path(temp_dir, paste0("temp_", i, ".tif"))
+    filename_temp <- file.path(paste0("./temp_dir/temp_", i, ".tif"))
     writeRaster(category_count_raster, filename_temp, overwrite=TRUE)
     category_count_list[[i]] <- rast(filename_temp)
   }
