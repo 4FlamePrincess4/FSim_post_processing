@@ -64,7 +64,7 @@ for (cat in names(categories)) {
     })
     
     # Save the result and add to the list
-    filename_temp <- file.path(temp_dir, paste0("temp_", i, ".tif"))
+    filename_temp <- file.path(paste0("./temp_dir/temp_", i, ".tif"))
     writeRaster(category_count_raster, filename_temp, overwrite=TRUE)
     category_count_list[[i]] <- rast(filename_temp)
   }
