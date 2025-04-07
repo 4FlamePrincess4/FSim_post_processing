@@ -5,7 +5,7 @@ library(optparse)
 library(furrr)
 library(future)
 
-plan(multicore) # Or plan(cluster, workers = <number_of_cores>)
+plan(cluster, workers = 56)
 
 #Set up input arguments with optparse
 option_list = list(
