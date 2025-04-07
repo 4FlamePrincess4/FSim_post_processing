@@ -57,7 +57,7 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp) {
 }
 
 #List the SeasonFire raster paths
-season_fire_files <- list.files(path = paste0("./SeasonFires_merged_tifs_", opt$scenario),
+season_fire_files <- list.files(path = paste0(wd, "/SeasonFires_merged_tifs_", opt$scenario),
                                 pattern = ".tif$", full.names=TRUE)
 num_seasons <- length(season_fire_files)
 
