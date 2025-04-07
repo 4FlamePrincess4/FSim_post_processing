@@ -11,6 +11,8 @@ plan(multicore) # Or plan(cluster, workers = <number_of_cores>)
 option_list = list(
   make_option(c("-w", "--working_directory"), type="character", default=NULL,
               help="working directory (mandatory)", metavar="character"),
+  make_option(c("-i", "--foa_lcp_path"), type="character", default=NULL,
+              help="foa lcp path (mandatory)", metavar="character"),
   make_option(c("-r", "--foa_run"), type="character", default=NULL,
               help="foa run label (mandatory)", metavar="character"),
   make_option(c("-s", "--scenario"), type="character", default=NULL,
@@ -26,7 +28,7 @@ setwd(opt$working_directory)
 wd <- getwd()
 
 # Specify log file path
-log_file <- paste0("./recalc_probability_rasters_", foa_run, "_", scenario, ".log")
+log_file <- paste0("./recalc_probability_rasters_", opt$foa_run, "_", opt$scenario, ".log")
 
 # Helper function to log messages to the log file
 log_message <- function(message) {
