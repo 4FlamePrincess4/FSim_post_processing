@@ -5,7 +5,7 @@ library(optparse)
 library(furrr)
 library(future)
 
-plan(cluster, workers = 56)
+plan(multisession)
 
 #Set up input arguments with optparse
 option_list = list(
@@ -76,7 +76,9 @@ foa_lcp <- terra::unwrap(foa_lcp)
 
 # Run each seasonfire file in parallel
 log_message("Calculating accumulator bp and flp rasters in parallel...")
-results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categories, foa_lcp), .progress = TRUE)
+results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categories, foa_lcp),
+                           .options=furrr_options(seed=TRUE, scheduling=1),
+                           .progress = TRUE)
 
 # Separate and combine the rasters by category
 log_message("Combining accumulator rasters by category...")
