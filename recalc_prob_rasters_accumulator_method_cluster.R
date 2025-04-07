@@ -76,8 +76,10 @@ foa_lcp <- terra::unwrap(foa_lcp)
 
 # Run each seasonfire file in parallel
 log_message("Calculating accumulator bp and flp rasters in parallel...")
+#Set up global future options
+future_options <- furrr_options(globals=c("wd", "opt", "categories", "season_fire_files", "num_seasons","calc_prob_w_accumulator"), seed=TRUE)
 results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categories, foa_lcp),
-                           .options=furrr_options(seed=TRUE, scheduling=1),
+                           .options=future_options,
                            .progress = TRUE)
 
 # Separate and combine the rasters by category
