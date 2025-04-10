@@ -81,9 +81,9 @@ categories <- list(
 log_message("Calculating accumulator bp and flp rasters in parallel...")
 plan(multisession)
 #Set up global future options
-future_options <- furrr_options(globals=c("wd", "opt", "categories", "season_fire_files", "num_seasons", "calc_prob_w_accumulator"), seed=TRUE)
+furrr_options <- furrr_options(globals=c("wd", "opt", "categories", "season_fire_files", "num_seasons", "calc_prob_w_accumulator"), seed=TRUE)
 results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categories, foa_lcp_path),
-                           .options=future_options(seed=TRUE),
+                           .options=furrr_options,
                            .progress = TRUE)
 
 # Convert paths to SpatRaster objects
