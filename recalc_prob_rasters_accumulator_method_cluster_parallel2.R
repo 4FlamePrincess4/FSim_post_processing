@@ -53,7 +53,7 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
 
   fl_paths <- map2(categories, names(categories), function(bounds, name) {
     mask <- seasonfire_FLs_int >= bounds[1] & seasonfire_FLs_int < bounds[2]
-    acc <- ifel(mask, 1, NA)
+    acc <- terra::ifel(mask, 1, NA)
     path <- file.path(temp_dir, paste0("accum_fl_", name, ".tif"))
     terra::writeRaster(acc, path, overwrite=TRUE)
     return(path)
@@ -96,7 +96,7 @@ results_rasters <- map(results_list, function(res) {
 # Combine accumulator rasters (same as before)
 combined_results <- Reduce(function(x, y) {
   Map(function(a, b) {
-    ifel(!is.na(a), a + b, b)
+    terra::ifel(!is.na(a), a + b, b)
   }, x, y)
 }, results_rasters)
 
