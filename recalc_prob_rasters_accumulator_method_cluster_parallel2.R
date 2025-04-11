@@ -49,13 +49,13 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
   dir.create(temp_dir, showWarnings = FALSE)
   
   accum_bp_path <- file.path(temp_dir, "accum_bp.tif")
-  writeRaster(accum_bp, accum_bp_path, overwrite=TRUE)
+  terra::writeRaster(accum_bp, accum_bp_path, overwrite=TRUE)
 
   fl_paths <- map2(categories, names(categories), function(bounds, name) {
     mask <- seasonfire_FLs_int >= bounds[1] & seasonfire_FLs_int < bounds[2]
     acc <- ifel(mask, 1, NA)
     path <- file.path(temp_dir, paste0("accum_fl_", name, ".tif"))
-    writeRaster(acc, path, overwrite=TRUE)
+    terra::writeRaster(acc, path, overwrite=TRUE)
     return(path)
   }) |> set_names(names(categories))
 
@@ -109,7 +109,7 @@ names(accum_bp) <- "recalc_bp"
 burn_prob <- accum_bp/num_seasons
 #Write the burn probability raster
 log_message("Writing the burn probability raster...")
-writeRaster(burn_prob, filename=paste0("./recalc_bp_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".tif"), overwrite=TRUE)
+terra::writeRaster(burn_prob, filename=paste0("./recalc_bp_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".tif"), overwrite=TRUE)
 rm(burn_prob)
 
 #Conditional FLPs
@@ -123,9 +123,9 @@ flp_names <- names(categories)
 for (i in seq_along(flp_names)) {
   name <- flp_names[i]
   log_message(paste0("Writing conditional flame length probability raster for flame lengths ", name))
-  writeRaster(cflps[[i]], filename = paste0("./recalc_cflp_", name, "_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".tif"), overwrite = TRUE)
+  terra::writeRaster(cflps[[i]], filename = paste0("./recalc_cflp_", name, "_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".tif"), overwrite = TRUE)
   log_message(paste0("Writing unconditional flame length probability raster for flame lengths ", name))
-  writeRaster(flps[[i]], filename = paste0("./recalc_flp_", name, "_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".tif"), overwrite = TRUE)
+  terra::writeRaster(flps[[i]], filename = paste0("./recalc_flp_", name, "_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".tif"), overwrite = TRUE)
 }
 
 # Clean up parallel backend
