@@ -43,10 +43,10 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
   seasonfire_FLs <- terra::rast(season_fire_path, lyr = 3)
   terra::crs(seasonfire_FLs) <- terra::crs(foa_lcp)
   seasonfire_FLs <- terra::extend(seasonfire_FLs, terra::ext(foa_lcp), snap = "near")
-  log_message(paste0("FL raster summary: ", summary(seasonfire_FLs)))
-  log_message(paste0("FL min/max: ", terra::minmax(seasonfire_FLs)))
+  #log_message(paste0("FL raster summary: ", summary(seasonfire_FLs)))
+  #log_message(paste0("FL min/max: ", terra::minmax(seasonfire_FLs)))
   burned_mask <- !is.na(seasonfire_FLs)
-  log_message(paste0("burned_mask: ", sum(burned_mask[], na.rm=TRUE), " burned pixels"))
+  #log_message(paste0("burned_mask: ", sum(burned_mask[], na.rm=TRUE), " burned pixels"))
   accum_bp <- burned_mask
   seasonfire_FLs_int <- floor(seasonfire_FLs)
 
