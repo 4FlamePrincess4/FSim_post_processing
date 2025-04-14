@@ -38,6 +38,8 @@ log_message <- function(message) {
 calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) {
   foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs=1)
   foa_lcp <- terra::unwrap(foa_lcp)
+  season_id <- stringr::str_extract(season_fire_path, "(?<=Season)\\d+(?=_)")
+  log_message(paste0("Now processing season ", season_id, "..."))
   seasonfire_FLs <- terra::rast(season_fire_path, lyr = 3)
   terra::crs(seasonfire_FLs) <- terra::crs(foa_lcp)
   seasonfire_FLs <- terra::extend(seasonfire_FLs, terra::ext(foa_lcp), snap = "near")
@@ -69,9 +71,6 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
 season_fire_files <- list.files(path = paste0(wd, "/SeasonFires_merged_tifs_", opt$scenario),
                                 pattern = ".tif$", full.names=TRUE)
 r <- terra::rast(season_fire_files[1])
-log_message(paste0("First SeasonFire raster has ", terra::nlyr(r), " layers"))
-print(names(r))
-
 num_seasons <- length(season_fire_files)
 
 #Define flame length categories
