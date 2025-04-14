@@ -54,12 +54,14 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
   dir.create(temp_dir, showWarnings = FALSE)
   
   accum_bp_path <- file.path(temp_dir, paste0("season", season_id, "_accum_bp.tif"))
+  log_message(print(accum_bp_path))
   terra::writeRaster(accum_bp, accum_bp_path, overwrite=TRUE)
 
   fl_paths <- map2(categories, names(categories), function(bounds, name) {
     mask <- seasonfire_FLs_int >= bounds[1] & seasonfire_FLs_int < bounds[2]
     acc <- terra::ifel(mask, 1, NA)
     path <- file.path(temp_dir, paste0("season", season_id, "_accum_fl_", name, ".tif"))
+    log_message(print(path))
     terra::writeRaster(acc, path, overwrite=TRUE)
     return(path)
   }) |> set_names(names(categories))
