@@ -41,9 +41,12 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
   seasonfire_FLs <- terra::rast(season_fire_path, lyr = 3)
   terra::crs(seasonfire_FLs) <- terra::crs(foa_lcp)
   seasonfire_FLs <- terra::extend(seasonfire_FLs, terra::ext(foa_lcp), snap = "near")
+  log_message(paste0("FL raster summary: ", summary(seasonfire_FLs)))
+  log_message(paste0("FL min/max: ", terra::minmax(seasonfire_FLs)))
   burned_mask <- !is.na(seasonfire_FLs)
+  log_message(paste0("burned_mask: ", sum(burned_mask[], na.rm=TRUE), " burned pixels"))
   accum_bp <- burned_mask
-  seasonfire_FLs_int <- round(seasonfire_FLs)
+  seasonfire_FLs_int <- floor(seasonfire_FLs)
 
   temp_dir <- file.path(tempdir(), paste0("accum_", tools::file_path_sans_ext(basename(season_fire_path))))
   dir.create(temp_dir, showWarnings = FALSE)
@@ -65,6 +68,10 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
 #List the SeasonFire raster paths
 season_fire_files <- list.files(path = paste0(wd, "/SeasonFires_merged_tifs_", opt$scenario),
                                 pattern = ".tif$", full.names=TRUE)
+r <- terra::rast(season_fire_files[1])
+log_message(paste0("First SeasonFire raster has ", terra::nlyr(r), " layers"))
+print(names(r))
+
 num_seasons <- length(season_fire_files)
 
 #Define flame length categories
