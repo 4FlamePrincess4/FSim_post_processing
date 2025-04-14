@@ -53,13 +53,13 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
   temp_dir <- file.path(tempdir(), paste0("accum_", tools::file_path_sans_ext(basename(season_fire_path))))
   dir.create(temp_dir, showWarnings = FALSE)
   
-  accum_bp_path <- file.path(temp_dir, "accum_bp.tif")
+  accum_bp_path <- file.path(temp_dir, paste0("season", season_id, "_accum_bp.tif"))
   terra::writeRaster(accum_bp, accum_bp_path, overwrite=TRUE)
 
   fl_paths <- map2(categories, names(categories), function(bounds, name) {
     mask <- seasonfire_FLs_int >= bounds[1] & seasonfire_FLs_int < bounds[2]
     acc <- terra::ifel(mask, 1, NA)
-    path <- file.path(temp_dir, paste0("accum_fl_", name, ".tif"))
+    path <- file.path(temp_dir, paste0("season", season_id, "_accum_fl_", name, ".tif"))
     terra::writeRaster(acc, path, overwrite=TRUE)
     return(path)
   }) |> set_names(names(categories))
@@ -95,14 +95,14 @@ results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categ
 # Convert paths to SpatRaster objects
 log_message("Reading temporary accumulator rasters from disk and combining...")
 
+# Convert paths into SpatRasters
 results_rasters <- map(results_list, function(res) {
-  map(res, rast)
+  map(res, rast)  # each res is a list of paths like accum_bp and fl categories
 })
 
-# Combine accumulator rasters (same as before)
 combined_results <- Reduce(function(x, y) {
   Map(function(a, b) {
-    terra::ifel(!is.na(a), a + b, b)
+    terra::ifel(!is.na(a), a + b, b)  # safely add only non-NA cells
   }, x, y)
 }, results_rasters)
 
@@ -116,13 +116,12 @@ burn_prob <- accum_bp/num_seasons
 #Write the burn probability raster
 log_message("Writing the burn probability raster...")
 terra::writeRaster(burn_prob, filename=paste0("./recalc_bp_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".tif"), overwrite=TRUE)
-rm(burn_prob)
 
-#Conditional FLPs
-cflps <- lapply(accum_flps, function(acc) acc / accum_bp)
+# Conditional FLPs: flame length probability given that it burned
+cflps <- map(accum_flps, ~ .x / accum_bp)
 
-#Unconditional FLPs
-flps <- lapply(cflps, function(cflp) cflp / num_seasons)
+# Unconditional FLPs: probability of this flame length occurring overall
+flps <- map(cflps, ~ .x / num_seasons)
 
 #Write cFLP and FLP rasters
 flp_names <- names(categories)
