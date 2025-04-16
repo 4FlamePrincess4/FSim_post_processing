@@ -57,6 +57,7 @@ cleanup_tempdir <- function(temp_dir) {
 #Define a function to calc prob rasters using an accumulator method
 #Note: accum_bp is a single-band accumulator raster. fl_accumulators is a list of six single-band accumulator rasters
 calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) {
+  library(terra)
   foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs=1)
   foa_lcp <- terra::unwrap(foa_lcp)
   season_id <- stringr::str_extract(season_fire_path, "(?<=Season)\\d+(?=_)")
