@@ -43,6 +43,7 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
   seasonfire_FLs <- terra::rast(season_fire_path, lyr = 3)
   terra::crs(seasonfire_FLs) <- terra::crs(foa_lcp)
   seasonfire_FLs <- terra::extend(seasonfire_FLs, terra::ext(foa_lcp), snap = "near")
+  seasonfire_FLs <- mask(seasonfire_FLs, foa_lcp)
   #log_message(paste0("FL raster summary: ", summary(seasonfire_FLs)))
   #log_message(paste0("FL min/max: ", terra::minmax(seasonfire_FLs)))
   burned_mask <- !is.na(seasonfire_FLs)
@@ -59,9 +60,9 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
 
   fl_paths <- map2(categories, names(categories), function(bounds, name) {
     mask <- seasonfire_FLs_int >= bounds[1] & seasonfire_FLs_int < bounds[2]
+    log_message(paste0("Category ", name, ": ", global(mask, "sum", na.rm=TRUE)[[1]], " matching pixels"))
     acc <- terra::ifel(mask, 1, NA)
     path <- file.path(temp_dir, paste0("season", season_id, "_accum_fl_", name, ".tif"))
-    log_message(print(path))
     terra::writeRaster(acc, path, overwrite=TRUE)
     return(path)
   }) |> set_names(names(categories))
@@ -104,8 +105,10 @@ results_rasters <- map(results_list, function(res) {
 
 combined_results <- Reduce(function(x, y) {
   Map(function(a, b) {
-    terra::ifel(!is.na(a), a + b, b)  # safely add only non-NA cells
-  }, x, y)
+  result <- terra::cover(a, 0) + terra::cover(b, 0)
+  result[is.na(a) & is.na(b)] <- NA
+  return(result)
+}, x, y)
 }, results_rasters)
 
 # Unpack combined results
