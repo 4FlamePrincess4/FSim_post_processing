@@ -4,6 +4,7 @@ library(tidyterra)
 library(optparse)
 library(furrr)
 library(future)
+library(parallel)
 
 #Set up input arguments with optparse
 option_list = list(
@@ -119,7 +120,7 @@ try(options("connections" = 256), silent=TRUE)
 cl <- parallel::makeCluster(n_workers)
 plan(cluster, workers = cl)
 # preload terra on all workers
-clusterCall(cl, function() {
+parallel::clusterCall(cl, function() {
   library(terra)
 })
 log_message(paste0("Launching with ", n_workers, " workers using PSOCK cluster..."))
