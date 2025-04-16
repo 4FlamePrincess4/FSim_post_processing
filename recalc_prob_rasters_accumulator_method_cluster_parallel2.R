@@ -4,7 +4,6 @@ library(tidyterra)
 library(optparse)
 library(furrr)
 library(future)
-library(parallel)
 
 #Set up input arguments with optparse
 option_list = list(
@@ -119,14 +118,11 @@ if (is.na(n_workers) || n_workers < 1) {
 try(options("connections" = 256), silent=TRUE)
 cl <- parallel::makeCluster(n_workers)
 plan(cluster, workers = cl)
-# preload terra on all workers
-parallel::clusterCall(cl, function() {
-  library(terra)
-})
 log_message(paste0("Launching with ", n_workers, " workers using PSOCK cluster..."))
 #Set up global future options
 furrr_options <- furrr_options(globals=c("wd", "opt", "categories", "season_fire_files", "num_seasons", 
-                                         "calc_prob_w_accumulator", "log_message", "log_file", "temp_dir"), seed=TRUE)
+                                         "calc_prob_w_accumulator", "log_message", "log_file", "temp_dir"),
+                               packages=c("terra","tidyverse","tidyterra","stringr"), seed=TRUE)
 results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categories, foa_lcp_path),
                            .options=furrr_options,
                            .progress = TRUE)
