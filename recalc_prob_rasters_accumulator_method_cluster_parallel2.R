@@ -118,6 +118,10 @@ if (is.na(n_workers) || n_workers < 1) {
 try(options("connections" = 256), silent=TRUE)
 cl <- parallel::makeCluster(n_workers)
 plan(cluster, workers = cl)
+# preload terra on all workers
+clusterCall(cl, function() {
+  library(terra)
+})
 log_message(paste0("Launching with ", n_workers, " workers using PSOCK cluster..."))
 #Set up global future options
 furrr_options <- furrr_options(globals=c("wd", "opt", "categories", "season_fire_files", "num_seasons", 
@@ -131,7 +135,7 @@ log_message("Reading temporary accumulator rasters from disk and combining...")
 
 # Convert paths into SpatRasters
 results_rasters <- map(results_list, function(res) {
-  map(res, rast)  # each res is a list of paths like accum_bp and fl categories
+  map(res, terra::rast)  # each res is a list of paths like accum_bp and fl categories
 })
 
 combined_results <- Reduce(function(x, y) {
