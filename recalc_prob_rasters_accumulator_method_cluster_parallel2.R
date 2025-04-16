@@ -114,6 +114,7 @@ n_workers <- as.integer(Sys.getenv("SLURM_NTASKS"))
 if (is.na(n_workers) || n_workers < 1) {
   n_workers <- parallel::detectCores() - 1  # Fallback
 }
+try(options("connections" = 1024), silent=TRUE)
 cl <- parallel::makeCluster(n_workers)
 plan(cluster, workers = cl)
 log_message(paste0("Launching with ", n_workers, " workers using PSOCK cluster..."))
