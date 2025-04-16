@@ -25,6 +25,11 @@ opt = parse_args(opt_parser)
 setwd(opt$working_directory)
 wd <- getwd()
 
+#Set up temporary directory
+temp_dir <- file.path(wd, "temp_dir")
+dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
+Sys.setenv(TMPDIR = temp_dir)
+
 # Specify log file path
 log_file <- paste0("./recalc_probability_rasters_", opt$foa_run, "_", opt$scenario, ".log")
 
@@ -67,9 +72,6 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
   accum_bp <- burned_mask
   seasonfire_FLs_int <- floor(seasonfire_FLs)
 
-  temp_dir <- file.path(wd, "temp_dir")
-  dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
-
   # Tell terra to use this directory for temporary files
   terra::terraOptions(tempdir = temp_dir)
   
@@ -107,8 +109,14 @@ categories <- list(
 
 # Run each seasonfire file in parallel
 log_message("Calculating accumulator bp and flp rasters in parallel...")
-slurm_cores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", unset = "4"))
-plan(multisession, workers = slurm_cores)
+# Get number of SLURM tasks (aka workers you can launch)
+n_workers <- as.integer(Sys.getenv("SLURM_NTASKS"))
+if (is.na(n_workers) || n_workers < 1) {
+  n_workers <- parallel::detectCores() - 1  # Fallback
+}
+cl <- parallel::makeCluster(n_workers)
+plan(cluster, workers = cl)
+log_message(paste0("Launching with ", n_workers, " workers using PSOCK cluster..."))
 #Set up global future options
 furrr_options <- furrr_options(globals=c("wd", "opt", "categories", "season_fire_files", "num_seasons", "calc_prob_w_accumulator", "log_message", "log_file"), seed=TRUE)
 results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categories, foa_lcp_path),
