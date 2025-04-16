@@ -64,7 +64,7 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
   seasonfire_FLs <- terra::rast(season_fire_path, lyr = 3)
   terra::crs(seasonfire_FLs) <- terra::crs(foa_lcp)
   seasonfire_FLs <- terra::extend(seasonfire_FLs, terra::ext(foa_lcp), snap = "near")
-  seasonfire_FLs <- mask(seasonfire_FLs, foa_lcp)
+  seasonfire_FLs <- terra::mask(seasonfire_FLs, foa_lcp)
   #log_message(paste0("FL raster summary: ", summary(seasonfire_FLs)))
   #log_message(paste0("FL min/max: ", terra::minmax(seasonfire_FLs)))
   burned_mask <- !is.na(seasonfire_FLs)
@@ -80,7 +80,7 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
   terra::writeRaster(accum_bp, accum_bp_path, overwrite=TRUE)
 
   fl_paths <- map2(categories, names(categories), function(bounds, name) {
-    mask <- seasonfire_FLs_int >= bounds[1] & seasonfire_FLs_int < bounds[2]
+    terra::mask <- seasonfire_FLs_int >= bounds[1] & seasonfire_FLs_int < bounds[2]
     log_message(paste0("Category ", name, ": ", global(mask, "sum", na.rm=TRUE)[[1]], " matching pixels"))
     acc <- terra::ifel(mask, 1, NA)
     path <- file.path(temp_dir, paste0("season", season_id, "_accum_fl_", name, ".tif"))
@@ -114,7 +114,7 @@ n_workers <- as.integer(Sys.getenv("SLURM_NTASKS"))
 if (is.na(n_workers) || n_workers < 1) {
   n_workers <- parallel::detectCores() - 1  # Fallback
 }
-try(options("connections" = 1024), silent=TRUE)
+try(options("connections" = 256), silent=TRUE)
 cl <- parallel::makeCluster(n_workers)
 plan(cluster, workers = cl)
 log_message(paste0("Launching with ", n_workers, " workers using PSOCK cluster..."))
