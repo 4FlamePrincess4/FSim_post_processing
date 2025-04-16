@@ -33,6 +33,22 @@ log_message <- function(message) {
   cat(message, "\n", file = log_file, append = TRUE)
 }
 
+# Helper function to clean up temp directory 
+cleanup_tempdir <- function(temp_dir) {
+  if (dir.exists(temp_dir)) {
+    log_message(paste0("Cleaning up temporary directory: ", temp_dir))
+    tryCatch({
+      unlink(temp_dir, recursive = TRUE, force = TRUE)
+      log_message("Temporary directory successfully deleted.")
+    }, error = function(e) {
+      log_message(paste0("Error while deleting temp directory: ", e$message))
+    })
+  } else {
+    log_message("Temp directory does not exist or was already cleaned up.")
+  }
+}
+
+
 #Define a function to calc prob rasters using an accumulator method
 #Note: accum_bp is a single-band accumulator raster. fl_accumulators is a list of six single-band accumulator rasters
 calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) {
@@ -51,8 +67,11 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
   accum_bp <- burned_mask
   seasonfire_FLs_int <- floor(seasonfire_FLs)
 
-  temp_dir <- file.path(tempdir(), paste0("accum_", tools::file_path_sans_ext(basename(season_fire_path))))
-  dir.create(temp_dir, showWarnings = FALSE)
+  temp_dir <- file.path(wd, "temp_dir")
+  dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
+
+  # Tell terra to use this directory for temporary files
+  terra::terraOptions(tempdir = temp_dir)
   
   accum_bp_path <- file.path(temp_dir, paste0("season", season_id, "_accum_bp.tif"))
   log_message(print(accum_bp_path))
@@ -88,7 +107,8 @@ categories <- list(
 
 # Run each seasonfire file in parallel
 log_message("Calculating accumulator bp and flp rasters in parallel...")
-plan(multisession)
+slurm_cores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", unset = "4"))
+plan(multisession, workers = slurm_cores)
 #Set up global future options
 furrr_options <- furrr_options(globals=c("wd", "opt", "categories", "season_fire_files", "num_seasons", "calc_prob_w_accumulator", "log_message", "log_file"), seed=TRUE)
 results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categories, foa_lcp_path),
@@ -140,3 +160,5 @@ for (i in seq_along(flp_names)) {
 
 # Clean up parallel backend
 plan(sequential)
+# Clean up temporary directory
+cleanup_tempdir(temp_dir)
