@@ -76,7 +76,7 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
   terra::terraOptions(tempdir = temp_dir)
   
   accum_bp_path <- file.path(temp_dir, paste0("season", season_id, "_accum_bp.tif"))
-  log_message(print(accum_bp_path))
+  #log_message(print(accum_bp_path))
   terra::writeRaster(accum_bp, accum_bp_path, overwrite=TRUE)
 
   fl_paths <- map2(categories, names(categories), function(bounds, name) {
