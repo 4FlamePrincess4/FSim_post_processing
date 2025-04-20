@@ -125,7 +125,7 @@ furrr_options <- furrr_options(globals=c("wd", "opt", "categories", "season_fire
                                packages=c("terra","tidyverse","tidyterra","stringr"), seed=TRUE)
 results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categories, foa_lcp_path),
                            .options=furrr_options,
-                           .progress = TRUE)
+                           .progress = FALSE)
 
 # Convert paths to SpatRaster objects
 log_message("Reading temporary accumulator rasters from disk and combining...")
