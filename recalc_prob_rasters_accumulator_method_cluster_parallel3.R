@@ -77,16 +77,14 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp) {
   #log_message(paste0("burned_mask: ", sum(burned_mask[], na.rm=TRUE), " burned pixels"))
   accum_bp <- burned_mask
   seasonfire_FLs_int <- floor(seasonfire_FLs)
-
-  # Tell terra to use this directory for temporary files
-  terra::terraOptions(tempdir = temp_dir)
-  
   accum_bp_path <- file.path(temp_dir, paste0("season", season_id, "_accum_bp.tif"))
   #log_message(print(accum_bp_path))
   terra::writeRaster(accum_bp, accum_bp_path, overwrite=TRUE, datatype="INT1U")
 
   fl_paths <- map2(categories, names(categories), function(bounds, name) {
-    mask <- seasonfire_FLs_int >= bounds[1] & seasonfire_FLs_int < bounds[2]
+    mask <- terra::ifel(!is.na(seasonfire_FLs_int) &
+                    seasonfire_FLs_int >= bounds[1] &
+                    seasonfire_FLs_int < bounds[2], TRUE, FALSE)
     log_message(paste0("Category ", name, ": ", global(mask, "sum", na.rm=TRUE)[[1]], " matching pixels"))
     acc <- terra::ifel(mask, 1, NA)
     path <- file.path(temp_dir, paste0("season", season_id, "_accum_fl_", name, ".tif"))
@@ -115,14 +113,7 @@ categories <- list(
 
 # Run each seasonfire file in parallel
 log_message("Calculating accumulator bp and flp rasters in parallel...")
-# Get number of SLURM tasks (aka workers you can launch)
-n_workers <- as.integer(Sys.getenv("SLURM_NTASKS"))
-if (is.na(n_workers) || n_workers < 1) {
-  n_workers <- parallel::detectCores() - 1  # Fallback
-}
-try(options("connections" = 256), silent=TRUE)
-cl <- parallel::makeCluster(n_workers)
-plan(cluster, workers = cl)
+plan(cluster, workers = 96)
 log_message(paste0("Launching with ", n_workers, " workers using PSOCK cluster..."))
 #Set up global future options
 furrr_options <- furrr_options(globals=c("wd", "foa_lcp", "opt", "categories", "season_fire_files", "num_seasons", 
