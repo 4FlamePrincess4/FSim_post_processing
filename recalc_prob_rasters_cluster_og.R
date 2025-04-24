@@ -22,6 +22,10 @@ opt = parse_args(opt_parser)
 setwd(opt$working_directory)
 wd <- getwd()
 
+#Create a temporary directory and make Terra do chunked processing to avoid out-of-memory kill events
+mkdir("./temp_dir")
+terra::terraOptions(memfrac = 0.5, tempdir = temp_dir) #Use only 50% of available memory
+
 #List the SeasonFire raster paths
 season_fire_files <- list.files(path = paste0(wd,"/SeasonFires_merged_tifs_", opt$scenario),
                                 pattern = ".tif$", full.names=TRUE)
