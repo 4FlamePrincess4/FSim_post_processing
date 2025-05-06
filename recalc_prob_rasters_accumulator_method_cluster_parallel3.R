@@ -148,15 +148,19 @@ for (res in results_list) {
   # Read one season's rasters
   season_bp <- terra::rast(res$accum_bp)
   accum_bp_r <- terra::rast(accum_bp_file)
-  accum_bp_sum <- terra::cover(accum_bp_r, 0) + terra::cover(season_bp, 0)
+  accum_bp_sum <- terra::ifel(is.na(accum_bp_r), 0, accum_bp_r) +
+                  terra::ifel(is.na(season_bp), 0, season_bp)
   accum_bp_sum[is.na(accum_bp_r) & is.na(season_bp)] <- NA
+
   terra::writeRaster(accum_bp_sum, accum_bp_file, overwrite=TRUE)
 
   for (cat in names(categories)) {
     season_fl <- terra::rast(res[[cat]])
     accum_fl <- terra::rast(accum_flp_files[[cat]])
-    accum_sum <- terra::cover(accum_fl, 0) + terra::cover(season_fl, 0)
+    accum_sum <- terra::ifel(is.na(accum_fl), 0, accum_fl) +
+                  terra::ifel(is.na(season_fl), 0, season_fl)
     accum_sum[is.na(accum_fl) & is.na(season_fl)] <- NA
+
     terra::writeRaster(accum_sum, accum_flp_files[[cat]], overwrite=TRUE)
   }
 }
