@@ -126,7 +126,7 @@ results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categ
                            .options=furrr_options,
                            .progress = FALSE)
 #How much memory was used?
-log_message(paste0("Memory used (Mb): ", mem_used()/1024^2))
+#log_message(paste0("Memory used (Mb): ", mem_used()/1024^2))
 
 # Convert paths to SpatRaster objects
 log_message("Reading temporary accumulator rasters from disk and combining...")
