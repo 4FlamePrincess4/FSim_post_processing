@@ -4,6 +4,7 @@ library(tidyterra)
 library(optparse)
 library(furrr)
 library(future)
+#library(pryr) #Install the package if you want to use the mem_used() function
 
 #Set up input arguments with optparse
 option_list = list(
