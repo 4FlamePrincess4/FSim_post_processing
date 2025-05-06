@@ -113,7 +113,8 @@ categories <- list(
 
 # Run each seasonfire file in parallel
 log_message("Calculating accumulator bp and flp rasters in parallel...")
-plan(cluster, workers = 96)
+n_workers <- 60
+plan(cluster, workers = n_workers)
 log_message(paste0("Launching with ", n_workers, " workers using PSOCK cluster..."))
 #Set up global future options
 furrr_options <- furrr_options(globals=c("wd", "foa_lcp", "opt", "categories", "season_fire_files", "num_seasons", 
