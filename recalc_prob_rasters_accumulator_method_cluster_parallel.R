@@ -5,8 +5,6 @@ library(optparse)
 library(furrr)
 library(future)
 
-plan(multisession)
-
 #Set up input arguments with optparse
 option_list = list(
   make_option(c("-w", "--working_directory"), type="character", default=NULL,
@@ -39,12 +37,14 @@ log_message <- function(message) {
 #Note: accum_bp is a single-band accumulator raster. fl_accumulators is a list of six single-band accumulator rasters
 calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp) {
   seasonfire_FLs <- terra::rast(season_fire_path, lyr = 3)
+  foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs=1)
+  foa_lcp <- terra::unwrap(foa_lcp)
   terra::crs(seasonfire_FLs) <- terra::crs(foa_lcp)
   seasonfire_FLs <- terra::extend(seasonfire_FLs, terra::ext(foa_lcp), snap = "near")
   burned_mask <- !is.na(seasonfire_FLs)
   accum_bp <- burned_mask
   
-  seasonfire_FLs_int <- round(seasonfire_FLs)
+  seasonfire_FLs_int <- floor(seasonfire_FLs)
   
   fl_accumulators <- lapply(categories, function(bounds) {
     mask <- seasonfire_FLs_int >= bounds[1] & seasonfire_FLs_int < bounds[2]
@@ -71,13 +71,11 @@ categories <- list(
   "12plus" = c(12, Inf)
 )
 
-foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs=1)
-foa_lcp <- terra::unwrap(foa_lcp)
-
 # Run each seasonfire file in parallel
 log_message("Calculating accumulator bp and flp rasters in parallel...")
 #Set up global future options
-future_options <- furrr_options(globals=c("wd", "opt", "categories", "season_fire_files", "num_seasons", "foa_lcp", "calc_prob_w_accumulator"), seed=TRUE)
+plan(multisession)
+future_options <- furrr_options(globals=c("wd", "opt", "categories", "season_fire_files", "num_seasons", "calc_prob_w_accumulator"), seed=TRUE)
 results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categories, foa_lcp),
                            .options=future_options,
                            .progress = TRUE)
