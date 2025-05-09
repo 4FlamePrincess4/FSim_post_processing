@@ -48,7 +48,7 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp) {
   
   fl_accumulators <- lapply(categories, function(bounds) {
     mask <- seasonfire_FLs_int >= bounds[1] & seasonfire_FLs_int < bounds[2]
-    acc <- ifel(mask, 1, NA)
+    acc <- terra::ifel(mask, 1, NA)
     return(acc)
   })
   names(fl_accumulators) <- names(categories)
