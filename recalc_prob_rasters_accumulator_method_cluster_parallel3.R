@@ -106,12 +106,12 @@ num_seasons <- length(season_fire_files)
 
 #Define flame length categories
 categories <- list(
-  "0_2"    = c(0, 2),
-  "2_4"    = c(2, 4),
-  "4_6"    = c(4, 6),
-  "6_8"    = c(6, 8),
-  "8_12"   = c(8, 12),
-  "12plus" = c(12, Inf)
+  "0_2"    = c(0, 0.6096),
+  "2_4"    = c(0.6096, 1.2192),
+  "4_6"    = c(1.2192, 1.8288),
+  "6_8"    = c(1.8288, 2.4384),
+  "8_12"   = c(2.4384, 3.6576),
+  "12plus" = c(3.6576, Inf)
 )
 
 # Run each seasonfire file in parallel
