@@ -119,6 +119,8 @@ log_message("Calculating accumulator bp and flp rasters in parallel...")
 n_workers <- 60
 plan(cluster, workers = n_workers)
 log_message(paste0("Launching with ", n_workers, " workers using PSOCK cluster..."))
+start_time <- Sys.time()
+log_message(paste0("Script started at: ", start_time))
 #Set up global future options
 furrr_options <- furrr_options(globals=c("wd", "opt", "categories", "season_fire_files", "num_seasons", 
                                          "calc_prob_w_accumulator", "log_message", "log_file", "temp_dir"),
@@ -131,6 +133,11 @@ results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categ
 
 # Convert paths to SpatRaster objects
 log_message("Reading temporary accumulator rasters from disk and combining...")
+timepoint1 <- Sys.time()
+log_message(paste0("System time before combining bp accumulator rasters: ", timepoint1))
+# Calculate and log duration
+duration1 <- difftime(end_time, start_time, units = "mins")
+log_message(paste0("Duration: ", round(duration1, 2), " minutes"))
 
 # Create accumulator rasters on disk, initialize with zeros
 template <- terra::rast(opt$foa_lcp_path, lyrs=1)
@@ -157,7 +164,7 @@ for (res in results_list) {
   accum_bp_sum[is.na(accum_bp_r) & is.na(season_bp)] <- NA
 
   terra::writeRaster(accum_bp_sum, accum_bp_file, overwrite=TRUE)
-
+  
   for (cat in names(categories)) {
     season_fl <- terra::rast(res[[cat]])
     accum_fl <- terra::rast(accum_flp_files[[cat]])
@@ -168,6 +175,12 @@ for (res in results_list) {
     terra::writeRaster(accum_sum, accum_flp_files[[cat]], overwrite=TRUE)
   }
 }
+
+timepoint2 <- Sys.time()
+log_message(paste0("System time after accumulator rasters and before writing: ", timepoint2))
+# Calculate and log duration
+duration2 <- difftime(end_time, start_time, units = "mins")
+log_message(paste0("Duration: ", round(duration2, 2), " minutes"))
 
 # Load final results
 accum_bp <- terra::rast(accum_bp_file)
@@ -187,6 +200,13 @@ for (cat in names(categories)) {
   log_message(paste0("Writing unconditional flame length probability raster for flame lengths ", cat))
   terra::writeRaster(flp, filename=paste0("./recalc_flp_", cat, "_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".tif"), overwrite=TRUE, datatype="FLT4S")
 }
+
+end_time <- Sys.time()
+log_message(paste0("Script ended at: ", end_time))
+
+# Calculate and log duration
+duration3 <- difftime(end_time, start_time, units = "mins")
+log_message(paste0("Total duration: ", round(duration3, 2), " minutes"))
 
 # Clean up parallel backend
 plan(sequential)
