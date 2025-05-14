@@ -179,7 +179,7 @@ for (res in results_list) {
 timepoint2 <- Sys.time()
 log_message(paste0("System time after accumulator rasters and before writing: ", timepoint2))
 # Calculate and log duration
-duration2 <- difftime(end_time, start_time, units = "mins")
+duration2 <- difftime(timepoint2, start_time, units = "mins")
 log_message(paste0("Duration: ", round(duration2, 2), " minutes"))
 
 # Load final results
