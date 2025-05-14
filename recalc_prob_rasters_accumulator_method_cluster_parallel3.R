@@ -136,7 +136,7 @@ log_message("Reading temporary accumulator rasters from disk and combining...")
 timepoint1 <- Sys.time()
 log_message(paste0("System time before combining bp accumulator rasters: ", timepoint1))
 # Calculate and log duration
-duration1 <- difftime(end_time, start_time, units = "mins")
+duration1 <- difftime(timepoint1, start_time, units = "mins")
 log_message(paste0("Duration: ", round(duration1, 2), " minutes"))
 
 # Create accumulator rasters on disk, initialize with zeros
