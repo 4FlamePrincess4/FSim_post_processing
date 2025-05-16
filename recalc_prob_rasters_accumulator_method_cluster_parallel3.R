@@ -157,6 +157,7 @@ accum_flp_files <- map(names(categories), function(name) {
 log_message("Accumulating temporary rasters into final outputs one at a time...")
 for (res in results_list) {
   # Read one season's rasters
+  log_message(paste0("Processing season ", res, " bp..."))
   season_bp <- terra::rast(res$accum_bp)
   accum_bp_r <- terra::rast(accum_bp_file)
   accum_bp_sum <- terra::ifel(is.na(accum_bp_r), 0, accum_bp_r) +
@@ -164,7 +165,7 @@ for (res in results_list) {
   accum_bp_sum[is.na(accum_bp_r) & is.na(season_bp)] <- NA
 
   terra::writeRaster(accum_bp_sum, accum_bp_file, overwrite=TRUE)
-  
+  log_message(paste0("Processing season ", res, " flp...."))
   for (cat in names(categories)) {
     season_fl <- terra::rast(res[[cat]])
     accum_fl <- terra::rast(accum_flp_files[[cat]])
