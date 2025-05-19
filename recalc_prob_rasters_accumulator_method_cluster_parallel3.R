@@ -71,13 +71,9 @@ calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) 
   foa_lcp <- terra::rast(foa_lcp_path, lyrs=1)
   foa_lcp <- terra::unwrap(foa_lcp)
   seasonfire_FLs <- terra::rast(season_fire_path, lyr = 3)
-  terra::crs(seasonfire_FLs) <- terra::crs(foa_lcp)
-  seasonfire_FLs <- terra::extend(seasonfire_FLs, terra::ext(foa_lcp), snap = "near")
-  seasonfire_FLs <- terra::mask(seasonfire_FLs, foa_lcp)
-  #log_message(paste0("FL raster summary: ", summary(seasonfire_FLs)))
-  #log_message(paste0("FL min/max: ", terra::minmax(seasonfire_FLs)))
+  terra::crs(seasonfire_FLs) <- terra::crs(foa_lcp) #This is necessary because FSim doesn't export the crs
+  #seasonfire_FLs <- terra::extend(seasonfire_FLs, terra::ext(foa_lcp), snap = "near") #I don't think this step is necessary since the original SeasonFire rasters were based on the FOA lcp
   burned_mask <- !is.na(seasonfire_FLs)
-  #log_message(paste0("burned_mask: ", sum(burned_mask[], na.rm=TRUE), " burned pixels"))
   accum_bp <- burned_mask
   seasonfire_FLs_int <- floor(seasonfire_FLs)
   accum_bp_path <- file.path(temp_dir, paste0("season", season_id, "_accum_bp.tif"))
