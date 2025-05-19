@@ -252,7 +252,7 @@ process_single_fire_season <- function(each_season, this_season_fireIDs, this_se
   }
   #Combine the fire ID stack with the AD & FL stacks. (Each "stack" actually only has one layer because there is only one fire.)
   season_fires_raster_stack <- c(this_season_ID_stack, this_season_AD_stack, this_season_FL_stack)
-  names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
+  names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_m")
   #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
   #Write the resulting 3-band raster stack.
   terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
@@ -419,7 +419,7 @@ process_overlaps <- function(each_season, this_season_fireIDs, this_season_scen,
         accum_FL <- result$accum_FL
       }
   season_fires_raster_stack <- c(accum_ID, accum_AD, accum_FL)
-  names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
+  names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_m")
   #Write the resulting 3-band raster stack.
   terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
   rm(accum_AD, accum_FL, accum_ID, season_fires_raster_stack, foa_lcp)
@@ -527,7 +527,7 @@ process_fire_season <- function(each_season) {
     terra::values(no_fires_AD) <- NA
     terra::values(no_fires_FL) <- NA
     season_fires_raster_stack <- c(no_fires_ID, no_fires_AD, no_fires_FL)
-    names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
+    names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_m")
     # Save the empty raster (optional, based on your workflow)
     terra::writeRaster(season_fires_raster_stack, filename = paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
     rm(no_fires_ID, no_fires_AD, no_fires_FL, season_fires_raster_stack, foa_lcp)
@@ -566,7 +566,7 @@ process_fire_season <- function(each_season) {
       terra::values(no_fires_AD) <- NA
       terra::values(no_fires_FL) <- NA
       season_fires_raster_stack <- c(no_fires_ID, no_fires_AD, no_fires_FL)
-      names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
+      names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_m")
       # Save the empty raster (optional, based on your workflow)
       terra::writeRaster(season_fires_raster_stack, filename = paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
       rm(no_fires_ID, no_fires_AD, no_fires_FL, season_fires_raster_stack, foa_lcp)
@@ -607,7 +607,7 @@ process_fire_season <- function(each_season) {
       terra::values(no_fires_AD) <- NA
       terra::values(no_fires_FL) <- NA
       season_fires_raster_stack <- c(no_fires_ID, no_fires_AD, no_fires_FL)
-      names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
+      names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_m")
       # Save the empty raster (optional, based on your workflow)
       terra::writeRaster(season_fires_raster_stack, filename = paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
       rm(no_fires_ID, no_fires_AD, no_fires_FL, season_fires_raster_stack, foa_lcp)
@@ -682,7 +682,7 @@ process_fire_season <- function(each_season) {
           accum_FL <- result$accum_FL
         }
         season_fires_raster_stack <- c(accum_ID, accum_AD, accum_FL)
-        names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_ft")
+        names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_m")
         #plot(season_fires_raster_stack, main = paste0("Season ", each_season))
         #Write the resulting 3-band raster stack.
         terra::writeRaster(season_fires_raster_stack, filename=paste0("./SeasonFires_merged_tifs_", opt$scenario, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
