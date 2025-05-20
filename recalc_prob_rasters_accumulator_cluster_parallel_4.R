@@ -142,7 +142,7 @@ terra::values(template) <- 0
 
 plan(multisession, workers = 60)  # Adjust as needed
 
-result_chunks <- split(results_list, seq_along(results_list) %% workers)
+result_chunks <- split(results_list, seq_along(results_list) %% n_workers)
 
 partial_sums <- future_map(result_chunks, function(chunk) {
   acc_bp <- terra::rast(template); values(acc_bp) <- 0
