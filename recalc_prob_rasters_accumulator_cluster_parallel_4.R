@@ -26,10 +26,6 @@ opt = parse_args(opt_parser)
 setwd(opt$working_directory)
 wd <- getwd()
 
-#Load foa_lcp to pass as a global
-foa_lcp <- terra::rast(opt$foa_lcp_path, lyrs=1)
-foa_lcp <- terra::unwrap(foa_lcp)
-
 #Set up temporary directory
 temp_dir <- file.path(wd, "temp_dir")
 dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
@@ -64,15 +60,11 @@ cleanup_tempdir <- function(temp_dir) {
 
 #Define a function to calc prob rasters using an accumulator method
 #Note: accum_bp is a single-band accumulator raster. fl_accumulators is a list of six single-band accumulator rasters
-calc_prob_w_accumulator <- function(season_fire_path, categories, foa_lcp_path) {
+calc_prob_w_accumulator <- function(season_fire_path, categories) {
   library(terra)
   season_id <- stringr::str_extract(season_fire_path, "(?<=Season)\\d+(?=_)")
   log_message(paste0("Now processing season ", season_id, "..."))
-  foa_lcp <- terra::rast(foa_lcp_path, lyrs=1)
-  foa_lcp <- terra::unwrap(foa_lcp)
   seasonfire_FLs <- terra::rast(season_fire_path, lyr = 3)
-  terra::crs(seasonfire_FLs) <- terra::crs(foa_lcp) #This is necessary because FSim doesn't export the crs
-  #seasonfire_FLs <- terra::extend(seasonfire_FLs, terra::ext(foa_lcp), snap = "near") #I don't think this step is necessary since the original SeasonFire rasters were based on the FOA lcp
   burned_mask <- !is.na(seasonfire_FLs)
   accum_bp <- burned_mask
   seasonfire_FLs_int <- floor(seasonfire_FLs)
@@ -121,12 +113,12 @@ log_message(paste0("Script started at: ", start_time))
 furrr_options <- furrr_options(globals=c("wd", "opt", "categories", "season_fire_files", "num_seasons", 
                                          "calc_prob_w_accumulator", "log_message", "log_file", "temp_dir"),
                                packages=c("terra","tidyverse","tidyterra","stringr"), seed=TRUE)
-results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categories, opt$foa_lcp_path),
+results_list <- future_map(season_fire_files, ~calc_prob_w_accumulator(.x, categories),
                            .options=furrr_options,
                            .progress = FALSE)
 #How much memory was used?
 #log_message(paste0("Memory used (Mb): ", mem_used()/1024^2))
-
+plan(sequential)
 # Convert paths to SpatRaster objects
 log_message("Reading temporary accumulator rasters from disk and combining...")
 timepoint1 <- Sys.time()
@@ -140,11 +132,11 @@ template <- terra::rast(opt$foa_lcp_path, lyrs=1)
 terra::crs(template) <- terra::crs(template)
 terra::values(template) <- 0
 
-plan(multisession, workers = 60)  # Adjust as needed
+#plan(multisession, workers = 60)  # Adjust as needed
 
-result_chunks <- split(results_list, seq_along(results_list) %% n_workers)
+result_chunks <- split(results_list, seq_along(results_list) %% 100)
 
-partial_sums <- future_map(result_chunks, function(chunk) {
+partial_sums <- map(result_chunks, function(chunk) {
   acc_bp <- terra::rast(template); values(acc_bp) <- 0
   acc_flp <- map(names(categories), ~ {
     r <- terra::rast(template); values(r) <- 0; r
@@ -152,11 +144,13 @@ partial_sums <- future_map(result_chunks, function(chunk) {
 
   for (res in chunk) {
     season_bp <- terra::rast(res$accum_bp)
+    terra::readAll(season_bp)  # Force into memory
     acc_bp <- terra::ifel(is.na(acc_bp), 0, acc_bp) +
               terra::ifel(is.na(season_bp), 0, season_bp)
 
     for (cat in names(categories)) {
       season_fl <- terra::rast(res[[cat]])
+      terra::readAll(season_fl)
       acc_flp[[cat]] <- terra::ifel(is.na(acc_flp[[cat]]), 0, acc_flp[[cat]]) +
                         terra::ifel(is.na(season_fl), 0, season_fl)
     }
