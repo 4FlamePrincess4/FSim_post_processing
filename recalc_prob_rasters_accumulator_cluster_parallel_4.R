@@ -137,20 +137,18 @@ terra::values(template) <- 0
 result_chunks <- split(results_list, seq_along(results_list) %% 100)
 
 partial_sums <- map(result_chunks, function(chunk) {
-  acc_bp <- terra::rast(template); values(acc_bp) <- 0
+  acc_bp <- terra::setValues(terra::rast(template), 0)
   acc_flp <- map(names(categories), ~ {
-    r <- terra::rast(template); values(r) <- 0; r
+    terra::setValues(terra::rast(template), 0)
   }) |> set_names(names(categories))
 
   for (res in chunk) {
-    season_bp <- terra::rast(res$accum_bp)
-    terra::readAll(season_bp)  # Force into memory
+    season_bp <- terra::readAll(terra::rast(res$accum_bp))
     acc_bp <- terra::ifel(is.na(acc_bp), 0, acc_bp) +
               terra::ifel(is.na(season_bp), 0, season_bp)
 
     for (cat in names(categories)) {
-      season_fl <- terra::rast(res[[cat]])
-      terra::readAll(season_fl)
+      season_fl <- terra::readAll(terra::rast(res[[cat]]))
       acc_flp[[cat]] <- terra::ifel(is.na(acc_flp[[cat]]), 0, acc_flp[[cat]]) +
                         terra::ifel(is.na(season_fl), 0, season_fl)
     }
@@ -158,6 +156,7 @@ partial_sums <- map(result_chunks, function(chunk) {
 
   list(bp = acc_bp, flp = acc_flp)
 })
+
 
 timepoint2 <- Sys.time()
 log_message(paste0("System time after accumulator rasters and before writing: ", timepoint2))
