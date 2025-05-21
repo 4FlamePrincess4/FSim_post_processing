@@ -143,12 +143,12 @@ partial_sums <- map(result_chunks, function(chunk) {
   }) |> set_names(names(categories))
 
   for (res in chunk) {
-    season_bp <- terra::readAll(terra::rast(res$accum_bp))
+    season_bp <- terra::rast(res$accum_bp)
     acc_bp <- terra::ifel(is.na(acc_bp), 0, acc_bp) +
               terra::ifel(is.na(season_bp), 0, season_bp)
 
     for (cat in names(categories)) {
-      season_fl <- terra::readAll(terra::rast(res[[cat]]))
+      season_fl <- terra::rast(res[[cat]])
       acc_flp[[cat]] <- terra::ifel(is.na(acc_flp[[cat]]), 0, acc_flp[[cat]]) +
                         terra::ifel(is.na(season_fl), 0, season_fl)
     }
