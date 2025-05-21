@@ -67,7 +67,7 @@ calc_prob_w_accumulator <- function(season_fire_path, categories) {
   seasonfire_FLs <- terra::rast(season_fire_path, lyr = 3)
   burned_mask <- !is.na(seasonfire_FLs)
   accum_bp <- burned_mask
-  seasonfire_FLs_int <- floor(seasonfire_FLs)
+  #seasonfire_FLs_int <- floor(seasonfire_FLs)
   accum_bp_path <- file.path(temp_dir, paste0("season", season_id, "_accum_bp.tif"))
   #log_message(print(accum_bp_path))
   terra::writeRaster(accum_bp, accum_bp_path, overwrite=TRUE, datatype="INT1U")
