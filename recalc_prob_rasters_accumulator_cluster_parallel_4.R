@@ -32,7 +32,7 @@ dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
 Sys.setenv(TMPDIR = temp_dir)
 
 #Force Terra to do chunked processing
-terra::terraOptions(memfrac = 0.5, tempdir = temp_dir)  # Use only 50% of available memory
+#terra::terraOptions(memfrac = 0.5, tempdir = temp_dir)  # Use only 50% of available memory
 
 # Specify log file path
 log_file <- paste0("./recalc_probability_rasters_", opt$foa_run, "_", opt$scenario, ".log")
