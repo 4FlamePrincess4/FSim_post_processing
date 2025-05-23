@@ -165,7 +165,7 @@ duration2 <- difftime(timepoint2, start_time, units = "mins")
 log_message(paste0("Duration: ", round(duration2, 2), " minutes"))
 
 # Load final results
-accum_bp <- terra::rast(accum_bp_file)
+accum_bp <- terra::rast(accum_bp_path)
 names(accum_bp) <- "recalc_bp"
 
 # Calculate and write burn probability
