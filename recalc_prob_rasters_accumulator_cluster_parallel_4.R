@@ -164,8 +164,14 @@ log_message(paste0("System time after accumulator rasters and before writing: ",
 duration2 <- difftime(timepoint2, start_time, units = "mins")
 log_message(paste0("Duration: ", round(duration2, 2), " minutes"))
 
-# Load final results
-accum_bp <- terra::rast(accum_bp_path)
+# Combine all the partial sums
+final_acc_bp <- reduce(map(partial_sums, "bp"), `+`)
+
+final_acc_flp <- reduce(map(partial_sums, "flp"), function(a, b) {
+  map2(a, b, `+`)
+})
+
+accum_bp <- final_acc_bp
 names(accum_bp) <- "recalc_bp"
 
 # Calculate and write burn probability
@@ -174,7 +180,7 @@ terra::writeRaster(burn_prob, filename=paste0("./recalc_bp_", opt$foa_run, "_", 
 
 # Final FLP outputs
 for (cat in names(categories)) {
-  accum_fl <- terra::rast(accum_flp_files[[cat]])
+  accum_fl <- final_acc_flp[[cat]]
   cflp <- accum_fl / accum_bp
   flp <- cflp / num_seasons
   log_message(paste0("Writing conditional flame length probability raster for flame lengths ", cat))
