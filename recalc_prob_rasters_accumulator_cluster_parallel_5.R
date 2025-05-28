@@ -71,18 +71,18 @@ calc_prob_w_accumulator <- function(season_fire_path, categories) {
   accum_bp_path <- file.path(temp_dir, paste0("season", season_id, "_accum_bp.tif"))
   #log_message(print(accum_bp_path))
   terra::writeRaster(accum_bp, accum_bp_path, overwrite=TRUE, datatype="INT1U")
-
+  
   fl_paths <- map2(categories, names(categories), function(bounds, name) {
     mask <- terra::ifel(!is.na(seasonfire_FLs) &
-                    seasonfire_FLs >= bounds[1] &
-                    seasonfire_FLs < bounds[2], TRUE, FALSE)
+                          seasonfire_FLs >= bounds[1] &
+                          seasonfire_FLs < bounds[2], TRUE, FALSE)
     log_message(paste0("Category ", name, ": ", global(mask, "sum", na.rm=TRUE)[[1]], " matching pixels"))
     acc <- terra::ifel(mask, 1, NA)
     path <- file.path(temp_dir, paste0("season", season_id, "_accum_fl_", name, ".tif"))
     terra::writeRaster(acc, path, overwrite=TRUE)
     return(path)
   }) |> set_names(names(categories))
-
+  
   return(c(list(accum_bp = accum_bp_path), fl_paths))
 }
 
@@ -141,7 +141,7 @@ partial_sums <- future_map(result_chunks, function(chunk) {
   acc_flp <- map(names(categories), ~ {
     terra::setValues(terra::rast(template), 0)
   }) |> set_names(names(categories))
-
+  
   for (res in chunk) {
     # --- Burn probability raster ---
     season_bp <- terra::rast(res$accum_bp)
@@ -152,7 +152,8 @@ partial_sums <- future_map(result_chunks, function(chunk) {
     for (cat in names(categories)) {
       season_fl <- terra::rast(res[[cat]])
       acc_flp[[cat]] <- terra::lapp(c(acc_flp[[cat]], season_fl), fun = function(x) {
-      rowSums(ifelse(is.na(x), 0, x))
+        rowSums(ifelse(is.na(x), 0, x))
+      })
     }
   }
   # Return both types
