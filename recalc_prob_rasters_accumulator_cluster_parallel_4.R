@@ -182,7 +182,7 @@ terra::writeRaster(burn_prob, filename=paste0("./recalc_bp_", opt$foa_run, "_", 
 for (cat in names(categories)) {
   accum_fl <- final_acc_flp[[cat]]
   cflp <- accum_fl / accum_bp
-  flp <- cflp / num_seasons
+  flp <- cflp * burn_prob
   log_message(paste0("Writing conditional flame length probability raster for flame lengths ", cat))
   terra::writeRaster(cflp, filename=paste0("./recalc_cflp_", cat, "_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".tif"), overwrite=TRUE, datatype="FLT4S")
   log_message(paste0("Writing unconditional flame length probability raster for flame lengths ", cat))
