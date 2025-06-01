@@ -137,9 +137,10 @@ plan(multisession, workers = 60)  # Adjust as needed
 result_chunks <- split(results_list, ceiling(seq_along(results_list) / 2000))
 
 partial_sums <- future_map(result_chunks, function(chunk) {
-  acc_bp <- terra::setValues(terra::rast(template), 0)
+  template_local <- template
+  acc_bp <- terra::setValues(terra::rast(template_local), 0)
   acc_flp <- map(names(categories), ~ {
-    terra::setValues(terra::rast(template), 0)
+    terra::setValues(terra::rast(template_local), 0)
   }) |> set_names(names(categories))
   
   for (res in chunk) {
