@@ -128,19 +128,18 @@ duration1 <- difftime(timepoint1, start_time, units = "mins")
 log_message(paste0("Duration: ", round(duration1, 2), " minutes"))
 
 # Create accumulator rasters on disk, initialize with zeros
-template <- terra::rast(opt$foa_lcp_path, lyrs=1)
-terra::crs(template) <- terra::crs(template)
-terra::values(template) <- 0
+#template <- terra::rast(opt$foa_lcp_path, lyrs=1)
+#terra::crs(template) <- terra::crs(template)
+#terra::values(template) <- 0
 
 plan(multisession, workers = 60)  # Adjust as needed
 
 result_chunks <- split(results_list, ceiling(seq_along(results_list) / 2000))
 
 partial_sums <- future_map(result_chunks, function(chunk) {
-  template_local <- template
-  acc_bp <- terra::setValues(terra::rast(template_local), 0)
+  acc_bp <- terra::setValues(terra::rast(terra::rast(opt$foa_lcp_path, lyrs=1)), 0)
   acc_flp <- map(names(categories), ~ {
-    terra::setValues(terra::rast(template_local), 0)
+    terra::setValues(terra::rast(opt$foa_lcp_path, lyrs=1), 0)
   }) |> set_names(names(categories))
   
   for (res in chunk) {
