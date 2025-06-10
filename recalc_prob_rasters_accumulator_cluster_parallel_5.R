@@ -145,15 +145,11 @@ partial_sums <- future_map(result_chunks, function(chunk) {
   for (res in chunk) {
     # --- Burn probability raster ---
     season_bp <- terra::rast(res$accum_bp)
-    acc_bp <- terra::lapp(c(acc_bp, season_bp), fun = function(x) {
-      rowSums(ifelse(is.na(x), 0, x))
-    })
+    acc_bp <- sum(acc_bp, season_bp, na.rm = TRUE)
     # --- Flame length category rasters ---
     for (cat in names(categories)) {
       season_fl <- terra::rast(res[[cat]])
-      acc_flp[[cat]] <- terra::lapp(c(acc_flp[[cat]], season_fl), fun = function(x) {
-        rowSums(ifelse(is.na(x), 0, x))
-      })
+      acc_flp[[cat]] <- sum(acc_flp[[cat]], season_fl, na.rm = TRUE)
     }
   }
   # Return both types
