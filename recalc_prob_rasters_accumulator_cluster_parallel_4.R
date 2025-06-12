@@ -76,7 +76,7 @@ calc_prob_w_accumulator <- function(season_fire_path, categories) {
     mask <- terra::ifel(!is.na(seasonfire_FLs) &
                     seasonfire_FLs >= bounds[1] &
                     seasonfire_FLs < bounds[2], TRUE, FALSE)
-    log_message(paste0("Category ", name, ": ", global(mask, "sum", na.rm=TRUE)[[1]], " matching pixels"))
+    #log_message(paste0("Category ", name, ": ", global(mask, "sum", na.rm=TRUE)[[1]], " matching pixels"))
     acc <- terra::ifel(mask, 1, NA)
     path <- file.path(temp_dir, paste0("season", season_id, "_accum_fl_", name, ".tif"))
     terra::writeRaster(acc, path, overwrite=TRUE)
