@@ -164,18 +164,23 @@ duration2 <- difftime(timepoint2, start_time, units = "mins")
 log_message(paste0("Duration: ", round(duration2, 2), " minutes"))
 
 # Combine all the partial sums
+log_message("Combining final_acc_bp...")
 final_acc_bp <- reduce(map(partial_sums, "bp"), `+`)
-
+log_message("Combining final_acc_flp...")
 final_acc_flp <- reduce(map(partial_sums, "flp"), function(a, b) {
   map2(a, b, `+`)
 })
 
+log_message("Assigning final_acc_bp to accum_bp...")
 accum_bp <- final_acc_bp
 names(accum_bp) <- "recalc_bp"
 
 # Calculate and write burn probability
+log_message("Calculating burn probability raster...")
 burn_prob <- accum_bp / num_seasons
+log_message("Writing burn probability raster to disk...")
 terra::writeRaster(burn_prob, filename=paste0("./recalc_bp_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".tif"), overwrite=TRUE, datatype="FLT4S")
+log_message("Burn probability raster written.")
 
 # Final FLP outputs
 for (cat in names(categories)) {
