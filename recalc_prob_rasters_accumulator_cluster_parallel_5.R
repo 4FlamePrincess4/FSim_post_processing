@@ -61,28 +61,28 @@ cleanup_tempdir <- function(temp_dir) {
 #Define a function to calc prob rasters using an accumulator method
 #Note: accum_bp is a single-band accumulator raster. fl_accumulators is a list of six single-band accumulator rasters
 calc_prob_w_accumulator <- function(season_fire_path, categories) {
-  library(terra)
   season_id <- stringr::str_extract(season_fire_path, "(?<=Season)\\d+(?=_)")
   log_message(paste0("Now processing season ", season_id, "..."))
+
+  template <- terra::rast(opt$foa_lcp_path, lyrs = 1)
+
   seasonfire_FLs <- terra::rast(season_fire_path, lyr = 3)
-  burned_mask <- !is.na(seasonfire_FLs)
-  accum_bp <- burned_mask
-  #seasonfire_FLs_int <- floor(seasonfire_FLs)
-  accum_bp_path <- file.path(temp_dir, paste0("season", season_id, "_accum_bp.tif"))
-  #log_message(print(accum_bp_path))
-  terra::writeRaster(accum_bp, accum_bp_path, overwrite=TRUE, datatype="INT1U")
+  seasonfire_FLs <- terra::resample(seasonfire_FLs, template, method = "near")
   
+  burned_mask <- !is.na(seasonfire_FLs)
+  accum_bp <- terra::ifel(burned_mask, 1, NA)
+  accum_bp_path <- file.path(temp_dir, paste0("season", season_id, "_accum_bp.tif"))
+  terra::writeRaster(accum_bp, accum_bp_path, overwrite=TRUE, datatype="INT1U")
+
   fl_paths <- map2(categories, names(categories), function(bounds, name) {
     mask <- terra::ifel(!is.na(seasonfire_FLs) &
-                          seasonfire_FLs >= bounds[1] &
-                          seasonfire_FLs < bounds[2], TRUE, FALSE)
-    #log_message(paste0("Category ", name, ": ", global(mask, "sum", na.rm=TRUE)[[1]], " matching pixels"))
-    acc <- terra::ifel(mask, 1, NA)
+                        seasonfire_FLs >= bounds[1] &
+                        seasonfire_FLs < bounds[2], 1, NA)
     path <- file.path(temp_dir, paste0("season", season_id, "_accum_fl_", name, ".tif"))
-    terra::writeRaster(acc, path, overwrite=TRUE)
+    terra::writeRaster(mask, path, overwrite = TRUE, datatype = "INT1U")
     return(path)
   }) |> set_names(names(categories))
-  
+
   return(c(list(accum_bp = accum_bp_path), fl_paths))
 }
 
@@ -136,23 +136,28 @@ plan(multisession, workers = 60)  # Adjust as needed
 
 result_chunks <- split(results_list, ceiling(seq_along(results_list) / 2000))
 
+template <- terra::rast(opt$foa_lcp_path, lyrs=1)
+
 partial_sums <- future_map(result_chunks, function(chunk) {
-  acc_bp <- terra::setValues(terra::rast(terra::rast(opt$foa_lcp_path, lyrs=1)), 0)
-  acc_flp <- map(names(categories), ~ {
-    terra::setValues(terra::rast(opt$foa_lcp_path, lyrs=1), 0)
-  }) |> set_names(names(categories))
-  
+  acc_bp <- terra::setValues(template, 0)
+  acc_flp <- map(names(categories), ~ terra::setValues(template, 0)) |> set_names(names(categories))
+
   for (res in chunk) {
-    # --- Burn probability raster ---
     season_bp <- terra::rast(res$accum_bp)
-    acc_bp <- sum(acc_bp, season_bp, na.rm = TRUE)
-    # --- Flame length category rasters ---
+    if (!terra::compareGeom(season_bp, acc_bp, stopOnError = FALSE)) {
+      season_bp <- terra::resample(season_bp, acc_bp, method = "near")
+    }
+    acc_bp <- terra::cover(acc_bp + season_bp, acc_bp)
+
     for (cat in names(categories)) {
       season_fl <- terra::rast(res[[cat]])
-      acc_flp[[cat]] <- sum(acc_flp[[cat]], season_fl, na.rm = TRUE)
+      if (!terra::compareGeom(season_fl, acc_flp[[cat]], stopOnError = FALSE)) {
+        season_fl <- terra::resample(season_fl, acc_flp[[cat]], method = "near")
+      }
+      acc_flp[[cat]] <- terra::cover(acc_flp[[cat]] + season_fl, acc_flp[[cat]])
     }
   }
-  # Return both types
+
   list(bp = acc_bp, flp = acc_flp)
 }, .progress = TRUE)
 
@@ -183,6 +188,10 @@ if (!all(map_lgl(bp_rasters, ~compareGeom(bp_rasters[[1]], .x, stopOnError = FAL
 log_message("Reducing with accumulate = TRUE...")
 bp_accum_steps <- Reduce(`+`, map(partial_sums, "bp"), accumulate = TRUE)
 log_message("Reduction succeeded.")
+if (length(bp_accum_steps) == 0) {
+  stop("No accumulator BP rasters found; check upstream raster creation.")
+}
+
 final_acc_bp <- bp_accum_steps[[length(bp_accum_steps)]]
 #The code will probably fail afer this, in which case try manual pairwise addition as a fallback plan
 
@@ -224,4 +233,5 @@ log_message(paste0("Total duration: ", round(duration3, 2), " minutes"))
 # Clean up parallel backend
 plan(sequential)
 # Clean up temporary directory
+gc()
 cleanup_tempdir(temp_dir)
