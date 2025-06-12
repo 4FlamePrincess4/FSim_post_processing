@@ -76,7 +76,7 @@ calc_prob_w_accumulator <- function(season_fire_path, categories) {
     mask <- terra::ifel(!is.na(seasonfire_FLs) &
                           seasonfire_FLs >= bounds[1] &
                           seasonfire_FLs < bounds[2], TRUE, FALSE)
-    log_message(paste0("Category ", name, ": ", global(mask, "sum", na.rm=TRUE)[[1]], " matching pixels"))
+    #log_message(paste0("Category ", name, ": ", global(mask, "sum", na.rm=TRUE)[[1]], " matching pixels"))
     acc <- terra::ifel(mask, 1, NA)
     path <- file.path(temp_dir, paste0("season", season_id, "_accum_fl_", name, ".tif"))
     terra::writeRaster(acc, path, overwrite=TRUE)
@@ -164,8 +164,29 @@ duration2 <- difftime(timepoint2, start_time, units = "mins")
 log_message(paste0("Duration: ", round(duration2, 2), " minutes"))
 
 # Combine all the partial sums
-log_message("Combining final_acc_bp...")
-final_acc_bp <- reduce(map(partial_sums, "bp"), `+`)
+log_message("Logging accumulator BP raster metadata...")
+for (i in seq_along(partial_sums)) {
+  tryCatch({
+    bp_rast <- partial_sums[[i]]$bp
+    log_message(paste0("Partial BP ", i, ": dim = ", paste(dim(bp_rast), collapse = " x "),
+                       ", crs = ", crs(bp_rast),
+                       ", ext = ", paste(ext(bp_rast), collapse = ", ")))
+  }, error = function(e) {
+    log_message(paste0("Error reading partial_sums[[", i, "]]$bp: ", e$message))
+  })
+}
+bp_rasters <- map(partial_sums, "bp")
+if (!all(map_lgl(bp_rasters, ~compareGeom(bp_rasters[[1]], .x, stopOnError = FALSE)))) {
+  log_message("ERROR: Not all accumulator BP rasters are compatible.")
+  stop("Incompatible raster geometries")
+}
+log_message("Reducing with accumulate = TRUE...")
+bp_accum_steps <- Reduce(`+`, map(partial_sums, "bp"), accumulate = TRUE)
+log_message("Reduction succeeded.")
+final_acc_bp <- bp_accum_steps[[length(bp_accum_steps)]]
+#The code will probably fail afer this, in which case try manual pairwise addition as a fallback plan
+
+#final_acc_bp <- reduce(map(partial_sums, "bp"), `+`)
 log_message("Combining final_acc_flp...")
 final_acc_flp <- reduce(map(partial_sums, "flp"), function(a, b) {
   map2(a, b, `+`)
