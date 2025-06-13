@@ -127,18 +127,15 @@ log_message(paste0("System time before combining bp accumulator rasters: ", time
 duration1 <- difftime(timepoint1, start_time, units = "mins")
 log_message(paste0("Duration: ", round(duration1, 2), " minutes"))
 
-# Create accumulator rasters on disk, initialize with zeros
-#template <- terra::rast(opt$foa_lcp_path, lyrs=1)
-#terra::crs(template) <- terra::crs(template)
-#terra::values(template) <- 0
-
 plan(multisession, workers = 60)  # Adjust as needed
 
 result_chunks <- split(results_list, ceiling(seq_along(results_list) / 2000))
 
-template <- terra::rast(opt$foa_lcp_path, lyrs=1)
-
 partial_sums <- future_map(result_chunks, function(chunk) {
+  # Create accumulator rasters on disk, initialize with zeros
+  template <- terra::rast(opt$foa_lcp_path, lyrs=1)
+  terra::values(template) <- 0
+  
   acc_bp <- terra::setValues(template, 0)
   acc_flp <- map(names(categories), ~ terra::setValues(template, 0)) |> set_names(names(categories))
 
