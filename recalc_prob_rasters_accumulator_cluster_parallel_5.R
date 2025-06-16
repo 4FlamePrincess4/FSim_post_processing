@@ -132,30 +132,32 @@ plan(multisession, workers = 60)  # Adjust as needed
 result_chunks <- split(results_list, ceiling(seq_along(results_list) / 2000))
 
 partial_sums <- future_map(result_chunks, function(chunk) {
-  # Create accumulator rasters on disk, initialize with zeros
-  template <- terra::rast(opt$foa_lcp_path, lyrs=1)
-  terra::values(template) <- 0
-  
+  template <- terra::rast(opt$foa_lcp_path, lyrs = 1)
+
   acc_bp <- terra::setValues(template, 0)
   acc_flp <- map(names(categories), ~ terra::setValues(template, 0)) |> set_names(names(categories))
 
   for (res in chunk) {
     season_bp <- terra::rast(res$accum_bp)
-    if (!terra::compareGeom(season_bp, acc_bp, stopOnError = FALSE)) {
-      season_bp <- terra::resample(season_bp, acc_bp, method = "near")
-    }
     acc_bp <- terra::cover(acc_bp + season_bp, acc_bp)
 
     for (cat in names(categories)) {
       season_fl <- terra::rast(res[[cat]])
-      if (!terra::compareGeom(season_fl, acc_flp[[cat]], stopOnError = FALSE)) {
-        season_fl <- terra::resample(season_fl, acc_flp[[cat]], method = "near")
-      }
       acc_flp[[cat]] <- terra::cover(acc_flp[[cat]] + season_fl, acc_flp[[cat]])
     }
   }
 
-  list(bp = acc_bp, flp = acc_flp)
+  #Write partial sum to disk and return file paths instead of SpatRasters
+  bp_path <- file.path(temp_dir, paste0("partial_bp_", as.integer(Sys.getpid()), "_", as.integer(runif(1, 1, 1e6)), ".tif"))
+  terra::writeRaster(acc_bp, bp_path, overwrite = TRUE)
+
+  flp_paths <- map2(acc_flp, names(acc_flp), function(r, name) {
+    path <- file.path(temp_dir, paste0("partial_flp_", name, "_", as.integer(Sys.getpid()), "_", as.integer(runif(1, 1, 1e6)), ".tif"))
+    terra::writeRaster(r, path, overwrite = TRUE)
+    return(path)
+  }) |> set_names(names(acc_flp))
+
+  list(bp = bp_path, flp = flp_paths)
 }, .progress = TRUE)
 
 
@@ -177,34 +179,24 @@ for (i in seq_along(partial_sums)) {
     log_message(paste0("Error reading partial_sums[[", i, "]]$bp: ", e$message))
   })
 }
-bp_rasters <- map(partial_sums, "bp")
-if (!all(map_lgl(bp_rasters, ~compareGeom(bp_rasters[[1]], .x, stopOnError = FALSE)))) {
-  log_message("ERROR: Not all accumulator BP rasters are compatible.")
-  stop("Incompatible raster geometries")
-}
+bp_rasters <- map(partial_sums, ~ terra::rast(.x$bp))
 log_message("Reducing with accumulate = TRUE...")
-bp_accum_steps <- Reduce(`+`, map(partial_sums, "bp"), accumulate = TRUE)
+bp_accum_steps <- Reduce(`+`, bp_rasters, accumulate = TRUE)
 log_message("Reduction succeeded.")
-if (length(bp_accum_steps) == 0) {
-  stop("No accumulator BP rasters found; check upstream raster creation.")
-}
 
 final_acc_bp <- bp_accum_steps[[length(bp_accum_steps)]]
-#The code will probably fail afer this, in which case try manual pairwise addition as a fallback plan
 
-#final_acc_bp <- reduce(map(partial_sums, "bp"), `+`)
 log_message("Combining final_acc_flp...")
-final_acc_flp <- reduce(map(partial_sums, "flp"), function(a, b) {
+
+final_acc_flp <- reduce(map(partial_sums, ~ map(.x$flp, terra::rast)), function(a, b) {
   map2(a, b, `+`)
 })
 
-log_message("Assigning final_acc_bp to accum_bp...")
-accum_bp <- final_acc_bp
-names(accum_bp) <- "recalc_bp"
+names(final_acc_bp) <- "recalc_bp"
 
 # Calculate and write burn probability
 log_message("Calculating burn probability raster...")
-burn_prob <- accum_bp / num_seasons
+burn_prob <- final_acc_bp / num_seasons
 log_message("Writing burn probability raster to disk...")
 terra::writeRaster(burn_prob, filename=paste0("./recalc_bp_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".tif"), overwrite=TRUE, datatype="FLT4S")
 log_message("Burn probability raster written.")
@@ -212,7 +204,7 @@ log_message("Burn probability raster written.")
 # Final FLP outputs
 for (cat in names(categories)) {
   accum_fl <- final_acc_flp[[cat]]
-  cflp <- accum_fl / accum_bp
+  cflp <- accum_fl / final_acc_bp
   flp <- cflp * burn_prob
   log_message(paste0("Writing conditional flame length probability raster for flame lengths ", cat))
   terra::writeRaster(cflp, filename=paste0("./recalc_cflp_", cat, "_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".tif"), overwrite=TRUE, datatype="FLT4S")
