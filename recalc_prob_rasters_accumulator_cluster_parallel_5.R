@@ -133,10 +133,11 @@ result_chunks <- split(results_list, ceiling(seq_along(results_list) / 2000))
 
 partial_sums <- future_map(result_chunks, function(chunk) {
   template <- terra::rast(opt$foa_lcp_path, lyrs = 1)
-
+  
   acc_bp <- terra::setValues(template, 0)
   acc_flp <- map(names(categories), ~ terra::setValues(template, 0)) |> set_names(names(categories))
-
+  crs(acc_bp) <- crs(template)
+  crs(acc_flp) <- crs(template)
   for (res in chunk) {
     season_bp <- terra::rast(res$accum_bp)
     acc_bp <- terra::cover(acc_bp + season_bp, acc_bp)
@@ -149,8 +150,9 @@ partial_sums <- future_map(result_chunks, function(chunk) {
 
   #Write partial sum to disk and return file paths instead of SpatRasters
   bp_path <- file.path(temp_dir, paste0("partial_bp_", as.integer(Sys.getpid()), "_", as.integer(runif(1, 1, 1e6)), ".tif"))
+  crs(acc_bp) <- crs(template)
   terra::writeRaster(acc_bp, bp_path, overwrite = TRUE)
-
+  crs(acc_flp[[cat]]) <- crs(template)
   flp_paths <- map2(acc_flp, names(acc_flp), function(r, name) {
     path <- file.path(temp_dir, paste0("partial_flp_", name, "_", as.integer(Sys.getpid()), "_", as.integer(runif(1, 1, 1e6)), ".tif"))
     terra::writeRaster(r, path, overwrite = TRUE)
