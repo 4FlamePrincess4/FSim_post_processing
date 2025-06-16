@@ -1,4 +1,4 @@
-The FSim post-processing R scripts were created to efficiently 1) combine individual fire tifs from FSim runs into a single tif for each fire season while deleting overburn, 2) merge outputs from FSim runs split into multiple parts and output fire perimeter and ignition point shapefiles from the sqlite database outputs, 3) sub-sample seasons to update a landscape with disturbance in FVS or estimate emissions across a range of fire season severities, 4) merge probability raster outputs from FOAs across a full study area, and 5) estimate overburn deleted by step 1. We may not need the select fires step, so that is ignored in the pipeline below. The code has been retained in case it ends up being useful. 
+The FSim post-processing R scripts were created to efficiently 1) combine individual fire tifs from FSim runs into a single tif for each fire season while deleting overburn, 2) merge outputs from FSim runs split into multiple parts and output fire perimeter and ignition point shapefiles from the sqlite database outputs, 3) sub-sample seasons to update a landscape with disturbance in FVS or estimate emissions across a range of fire season severities, 4) merge probability raster outputs from FOAs across a full study area, 5) estimate overburn deleted by step 1, and 6) recalculate the burn probability, conditional flame length probability, and unconditional flame length probability rasters from the SeasonFire rasters (accounting for the overburn area deleted). We may not need the select fires step, so that is ignored in the pipeline below. The code has been retained in case it ends up being useful. 
 
 Additional scripts were created to automate processes on a linux cluster or Titan machine. For example, these early iteration scripts were created to rename fire tifs: rename_tifs.ps1, rename_tifs.sh, rename_tifs2.ps1. The linux version of this script was updated to remove the time-consuming process of copying the script to directories and then running them. It was then updated the Linux version to first check whether files had been renamed, and then either rename the files or not and print a statement to an output file: rename_tifs_conditional.sh.
 
@@ -10,6 +10,7 @@ The full pipeline now is:
 2. auto_rename_tifs_conditional.sh -> auto_compress_tif_folders.sh
 3. FSim_post_processing1_merge_fire_tifs_v11_Scenario_refact_of_the_Nordgren.R 
 4. FSim_post_processing5_summarize_overburn_removed_Alderaan.R
+5. FSim_post_processing6_recalc_prob_rasters_accumulator_cluster_parallel_5.R
 
 The R scripts each require a separate bash script to run the R script as a slurm job. Currently there are the run_r_script.sh and run_r_script2.txt template files. 
 
