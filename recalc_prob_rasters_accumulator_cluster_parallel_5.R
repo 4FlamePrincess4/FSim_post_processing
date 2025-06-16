@@ -135,9 +135,14 @@ partial_sums <- future_map(result_chunks, function(chunk) {
   template <- terra::rast(opt$foa_lcp_path, lyrs = 1)
   
   acc_bp <- terra::setValues(template, 0)
-  acc_flp <- map(names(categories), ~ terra::setValues(template, 0)) |> set_names(names(categories))
   crs(acc_bp) <- crs(template)
-  crs(acc_flp) <- crs(template)
+
+  acc_flp <- map(names(categories), ~ {
+    r <- terra::setValues(template, 0)
+    crs(r) <- crs(template)
+    r
+  }) |> set_names(names(categories))
+  
   for (res in chunk) {
     season_bp <- terra::rast(res$accum_bp)
     acc_bp <- terra::cover(acc_bp + season_bp, acc_bp)
