@@ -22,6 +22,7 @@ cat > "$script_name" <<EOL
 # sed -i -e 's/\r$//' rename_tifs.sh
 
 #SBATCH --job-name=${job_name}
+#SBATCH --account=wildland_fire_smoke_tradeoff
 #SBATCH --partition=ceres
 #SBATCH --time=02-00:00
 #SBATCH --nodes=1
