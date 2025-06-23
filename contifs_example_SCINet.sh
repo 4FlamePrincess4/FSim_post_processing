@@ -3,6 +3,7 @@
 # sed -i -e 's/\r$//' rename_tifs.sh
 
 #SBATCH --job-name=122RO3con
+#SBATCH --account=wildland_fire_smoke_tradeoff
 #SBATCH --partition=ceres
 #SBATCH --time=02-00:00
 #SBATCH --nodes=1
