@@ -3,6 +3,7 @@
 ## This is code to run the script that launches FSim within the firemodels.sif container
 
 #SBATCH --job-name=F122ROp1
+#SBATCH --account=wildland_fire_smoke_tradeoff
 #SBATCH --partition=ceres
 #SBATCH --time=07-00:00
 #SBATCH --nodes=1
