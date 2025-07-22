@@ -107,6 +107,8 @@ for(fire_record in 1:nrow(firelists)){
   }
 }
 
+write_csv(firelists, paste0("./", foa_run,"_",scenario, "_", run_timepoint, "_merged_firelists.csv"))
+
 #STEP 3: Merge (average) probability rasters from all parts of each run
 ###############################################
 #Read in the "All" tifs, which are multiband rasters of outputs that include
