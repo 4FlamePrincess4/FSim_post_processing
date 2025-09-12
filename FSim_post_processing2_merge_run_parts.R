@@ -223,62 +223,45 @@ dbDisconnect(con)
 #STEP 5: Export ignitions for all fires (combine across parts)
 #############################################################
 #Read in fire ignitions
-point_dbs <- list.files(path=wd,
-                        recursive=F,
-                        pattern="_Ignitions.sqlite",
-                        full.names=T)
+point_dbs <- list.files(path = wd,
+                        pattern = "_Ignitions.sqlite",
+                        full.names = TRUE)
 
-i=1
-
-# Initialize an empty vector for accumulating points
 pts_vector_all <- NULL
 
-#Loop through each perimeter, manipulate, and then merge all into one file
-
-for (i in seq_along(point_dbs)){
+for (i in seq_along(point_dbs)) {
   
-  # Extract the run part from the file path (e.g., "pt1" from path)
+  # Extract run part (e.g., "pt1")
   run_part <- sub(".*_(pt\\d+)_.*", "\\1", basename(point_dbs[i]))
+  part_num <- as.numeric(sub("pt", "", run_part))
   
-  #connect to the database
-  con <- dbConnect(drv=RSQLite::SQLite(), dbname=point_dbs[i])
-  print(con)
+  # Season offset so seasons are unique across parts
+  season_offset <- (part_num - 1) * 5000
   
-  #list all tables, besides the unnecesary "sqlite_sequence"
-  tables <- dbListTables(con)[ dbListTables(con) !="sqlite_sequence"]
-  print(tables)
+  # Read database
+  con <- dbConnect(RSQLite::SQLite(), point_dbs[i])
+  tables <- dbListTables(con)[dbListTables(con) != "sqlite_sequence"]
   
-  #Initiate the sql_dataframes
-  sql_dataframes <- vector("list", length=length(tables))
-  
-  ## create a dataframe for each table
-  for (j in seq_along(tables)) {
-    assign(paste0("df",j), dbGetQuery(conn=con, statement=paste("SELECT * FROM '", tables[[j]], "'", sep="")))
-  }
-  
-  # Close the database connection
+  # Read ignition table (assuming df2 = ignitions, df3 = spatial ref)
+  df2 <- dbGetQuery(con, paste0("SELECT * FROM '", tables[2], "'"))
+  df3 <- dbGetQuery(con, paste0("SELECT * FROM '", tables[3], "'"))
   dbDisconnect(con)
   
-  #create a shapefile from the dataframes ----
+  # Rename and fix season numbering
+  df2 <- df2 %>%
+    rename(lon = ignition_x, lat = ignition_y) %>%
+    mutate(Season = season + 1 + season_offset,
+           Season_FireID = paste0(Season, "_", fire_id),
+           run_part = run_part)
   
-  #change the x, y geometry fields to lat/long
-  colnames(df2)[colnames(df2) == "ignition_x"]<- "lon"
-  colnames(df2)[colnames(df2) == "ignition_y"]<- "lat"
+  # Create vector
+  pts_vector <- terra::vect(df2, geom = c("lon", "lat"), crs = df3$srtext)
   
-  # Add run part as a new column in df2
-  df2$run_part <- run_part
-  
-  # Create vector for current points with renamed geometry fields
-  pts_vector <- terra::vect(x = df2, geom = c("lon", "lat"), crs = df3$srtext)
-
-  # Combine with accumulated points
-  if (is.null(pts_vector_all)) {
-    pts_vector_all <- pts_vector
-  } else {
-    pts_vector_all <- rbind(pts_vector_all, pts_vector)
-  }
+  # Append
+  pts_vector_all <- if (is.null(pts_vector_all)) pts_vector else rbind(pts_vector_all, pts_vector)
 }
   
 #save the file
 writeVector(pts_vector_all, paste0("./", "ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
               filetype= "ESRI Shapefile")
+
