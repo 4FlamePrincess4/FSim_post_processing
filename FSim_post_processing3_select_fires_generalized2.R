@@ -25,9 +25,8 @@ summarize_and_sample_fires <- function(study_area,
                                        n_samples = 100,
                                        k_years = 5,
                                        out_dir = "C:/WFSETP/TTN_paper/FSim_Outputs",
-                                       workers = parallel::detectCores() - 1,
-                                       seed = 42,
-                                       save_per_foa = FALSE) {
+                                       workers = 24,
+                                       seed = 42) {
 
 
   params_df <- tibble(foa = foas, run = runs) %>%
@@ -133,40 +132,6 @@ summarize_and_sample_fires <- function(study_area,
   
   write_csv(decile_long_df, file.path(out_dir, paste0(study_area, "_five_year_set_deciles_long.csv")))
   
-  # Optionally save per-FOA files that contain the fire rows for each chosen decile set
-  if (isTRUE(save_per_foa)) {
-    # For every unique FOA / run / scenario / timepoint combination present in the read-in lists,
-    # save a CSV containing rows belonging to each decile set, labeled with decile.
-    per_params <- all_firelists %>%
-      select(FOA, run, scenario, timepoint) %>%
-      distinct()
-    
-    for (i in seq_len(nrow(per_params))) {
-      this_foa <- per_params$FOA[i]
-      this_run <- per_params$run[i]
-      this_scn <- per_params$scenario[i]
-      this_tp  <- per_params$timepoint[i]
-      
-      subset_df <- all_firelists %>%
-        filter(FOA == this_foa, run == this_run, scenario == this_scn, timepoint == this_tp)
-      
-      # for each decile label, grab rows matching the seasons
-      df_p20 <- subset_df %>% filter(Season %in% decile_list$p20$seasons) %>% mutate(decile = "20th", sample_id = decile_list$p20$sample_id)
-      df_p60 <- subset_df %>% filter(Season %in% decile_list$p60$seasons) %>% mutate(decile = "60th", sample_id = decile_list$p60$sample_id)
-      df_p90 <- subset_df %>% filter(Season %in% decile_list$p90$seasons) %>% mutate(decile = "90th", sample_id = decile_list$p90$sample_id)
-      
-      out_df <- bind_rows(df_p20, df_p60, df_p90) %>%
-        arrange(decile, Season)
-      
-      # output file name
-      out_folder <- file.path(out_dir, paste0(study_area, "_", this_run, "_", this_scn, "_", this_tp))
-      if (!dir.exists(out_folder)) dir.create(out_folder, recursive = TRUE)
-      out_file <- file.path(out_folder, paste0(this_run, "_", this_scn, "_", this_tp, "_selected_5yrsets_deciles.csv"))
-      
-      write_csv(out_df, out_file)
-      message("Wrote per-FOA decile file: ", out_file)
-    } # end per-FOA loop
-  }
   
   # Return a list invisibly for programmatic inspection
   invisible(list(
