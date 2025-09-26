@@ -173,52 +173,44 @@ perimeter_dbs <- list.files(path=wd,
                             pattern="_Perimeters.sqlite",
                             full.names=T)
 
-i=1
+all_perimeters <- list()
 
 #Loop through each perimeter, manipulate, and then merge all into one file
 
-for (i in seq_along(perimeter_dbs)){
+for (i in seq_along(perimeter_dbs)) {
   
-  #Work with the sqlite data ----
+  # Connect to SQLite DB
+  con <- dbConnect(RSQLite::SQLite(), perimeter_dbs[i])
   
-  #connect to the database
-  con <- dbConnect(drv=RSQLite::SQLite(), dbname=perimeter_dbs[i])
+  # List tables (skip sqlite_sequence)
+  tables <- setdiff(dbListTables(con), "sqlite_sequence")
   
-  #list all tables, besides the unnecessary "sqlite_sequence"
-  tables <- dbListTables(con)[ dbListTables(con) !="sqlite_sequence"]
+  # Read each table as a dataframe
+  dfs <- lapply(tables, function(tbl) dbGetQuery(con, paste0("SELECT * FROM '", tbl, "'")))
   
-  #Initiate the sql_dataframes
-  sql_dataframes <- vector("list", length=length(tables))
+  # Assuming df2 = main attribute table, df3 = spatial reference
+  df2 <- dfs[[2]]  # attribute table
+  df3 <- dfs[[3]]  # spatial reference table
   
-  ## create a dataframe for each table
-  for (j in seq_along(tables)) {
-    assign(paste0("df",j), dbGetQuery(conn=con, 
-                                      statement=paste("SELECT * FROM '", 
-                                                      tables[[j]], "'", sep="")))
-  }
+  # Convert BLOB geometry to sf geometry
+  df2$GEOMETRY <- st_as_sfc(structure(as.list(df2$GEOMETRY), class = "blob"), crs = df3$srtext)
+  df2_sf <- st_as_sf(df2)
   
-  #create a shapefile from the dataframes ----
+  # Add a source column if needed
+  df2_sf$source_db <- basename(perimeter_dbs[i])
   
+  # Store in list
+  all_perimeters[[i]] <- df2_sf
   
-  df2$GEOMETRY <- sf::st_as_sfc(structure(as.list(df2$GEOMETRY),class="blob"),
-                                crs = df3$srtext)
-  
-  df2 <- st_as_sf(df2)
-  
-  #save the file
-  st_write(df2,
-              paste0("./", "perimeters_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_part",i),
-              driver= "ESRI Shapefile", append=FALSE)
-  #The below options combine the parts into one geojson or shapefile, 
-  # but these file types don't support file sizes large enough to store all perimeters.
-  # st_write(df2,
-  #          paste0("./", "perimeters_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".geojson"),
-  #          append=TRUE)
-  # st_write(df2,
-  #          paste0("./", "perimeters_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
-  #          driver= "ESRI Shapefile", append=TRUE)
+  dbDisconnect(con)
 }
-dbDisconnect(con)
+
+# Combine all into one sf object
+all_perimeters_sf <- do.call(rbind, all_perimeters)
+
+# Write to File Geodatabase
+out_gdb <-  paste0("./perimeters_all_", foa_run, "_", scenario, "_", run_timepoint, ".gdb")
+st_write(all_perimeters_sf, dsn = out_gdb, layer = "perimeters", driver = "OpenFileGDB")
 
 #STEP 5: Export ignitions for all fires (combine across parts)
 #############################################################
@@ -264,4 +256,5 @@ for (i in seq_along(point_dbs)) {
 #save the file
 writeVector(pts_vector_all, paste0("./", "ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
               filetype= "ESRI Shapefile")
+
 
