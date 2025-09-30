@@ -2,7 +2,7 @@
 
 # Usage: ./generate_cmdx_files.sh <foa> <foa_run> <scenario> <run_timepoint> <num_parts> <study_area> <lcp> <fdist> <erc>
 
-if [ "$#" -ne 6 ]; then
+if [ "$#" -ne 9 ]; then
     echo "Usage: $0 <foa> <foa_run> <scenario> <run_timepoint> <num_parts> <study_area> <lcp> <fdist> <erc>"
     exit 1
 fi
