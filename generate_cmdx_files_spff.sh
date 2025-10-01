@@ -1,37 +1,39 @@
 #!/bin/bash
 
-# Usage: ./generate_cmdx_files.sh <pyrome> <foa_run> <scenario> <run_timepoint> <num_parts> <study_area> <lcp> <fdist> <erc>
+# Usage: ./generate_cmdx_files.sh <pyrome> <GCM> <timepoint> <num_parts> <study_area> <lcp> <fdist> <erc> <idg> <frisk> <adj>
 
 if [ "$#" -ne 9 ]; then
-    echo "Usage: $0 <foa> <foa_run> <scenario> <run_timepoint> <num_parts> <study_area> <lcp> <fdist> <erc>"
+    echo "Usage: $0 <pyrome> <GCM> <timepoint> <num_parts> <study_area> <lcp> <fdist> <erc> <idg> <frisk> <adj>"
     exit 1
 fi
 
 pyrome=$1
-foa_run=$2
-scenario=$3
-run_timepoint=$4
-num_parts=$5
-study_area=$6
-lcp=$7
-fdist=$8
-erc=$9
+GCM=$2
+timepoint=$3
+num_parts=$4
+study_area=$5
+lcp=$6
+fdist=$7
+erc=$8
+idg=$9
+frisk=$10
+adj=$11
 
-output_dir="/project/spff/${study_area}_${foa_run}_${scenario}_${run_timepoint}"
+output_dir="/project/spff/${study_area}_${pyrome}_${GCM}_${timepoint}"
 
 for part in $(seq 1 $num_parts); do
-    cmdx_file="${foa_run}_pt${part}_${scenario}_${run_timepoint}.cmdx"
+    cmdx_file="${pyrome}_pt${part}_${GCM}_${timepoint}.cmdx"
     
     cat > "$cmdx_file" <<EOL
-IgnitionProbabilityGrid:      _inputs/idg/${pyrome}_idg.tif
+IgnitionProbabilityGrid:      _inputs/idg/${idg}
 landscape:                    _inputs/lcp/${lcp}
-FireDayDistributionFile:      _inputs/fdist/${fdist}.fdist
-ROSAdjust:                    _inputs/adj/${foa_run}.adj
+FireDayDistributionFile:      _inputs/fdist/${fdist}
+ROSAdjust:                    _inputs/adj/${adj}
 FMS80:                        _inputs/fms/fms80.fms
 FMS90:                        _inputs/fms/fms90.fms
 FMS97:                        _inputs/fms/fms97.fms
 SeasonErcFile:                _inputs/erc/${erc}_SeasonERC${part}.csv
-FriskFile:                    _inputs/frisk/Colville_FOA4d_r1.frisk
+FriskFile:                    _inputs/frisk/{frisk}
 #Customfmd:                    _inputs/fmd/XXX.fmd (if present)
 #IgnitionMask:                XXX_mask.tif (if present)
 #PolicyGrid:                  XXX_policy.tif (if present)
@@ -56,11 +58,11 @@ SuppressionFactor:            2.0
 #
 NumSimulations:               5000
 #
-OutputsName:                  ${foa_run}_pt${part}_${scenario}_${run_timepoint}
-ProgressFilePathname:	      ./${foa_run}_pt${part}_${scenario}_${run_timepoint}_progress.txt
+OutputsName:                  ${pyrome}_pt${part}_${GCM}_${timepoint}
+ProgressFilePathname:	      ./${pyrome}_pt${part}_${GCM}_${timepoint}_progress.txt
 
 EOL
 
 done
 
-echo "Generated $num_parts cmdx files for ${study_area} ${foa_run}, scenario ${scenario}, run timepoint ${run_timepoint}."
+echo "Generated $num_parts cmdx files for ${study_area} ${pyrome}, scenario ${GCM}, run timepoint ${timepoint}."
