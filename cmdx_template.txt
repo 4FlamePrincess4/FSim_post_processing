@@ -1,0 +1,35 @@
+IgnitionProbabilityGrid:      _inputs/idg/{idg}
+landscape:                    _inputs/lcp/{lcp}
+FireDayDistributionFile:      _inputs/fdist/{fdist}
+ROSAdjust:                    _inputs/adj/{adj}
+FMS80:                        _inputs/fms/fms80.fms
+FMS90:                        _inputs/fms/fms90.fms
+FMS97:                        _inputs/fms/fms97.fms
+SeasonErcFile:                _inputs/erc/{erc}_SeasonERC{part}.csv
+FriskFile:                    _inputs/frisk/{frisk}
+#Customfmd:                    _inputs/fmd/XXX.fmd (if present)
+#IgnitionMask:                XXX_mask.tif (if present)
+#PolicyGrid:                  XXX_policy.tif (if present)
+#PolicyCSV:                   XXX_policy.csv (if present)
+FireSizeLimit:                -1
+DisableConvergenceAngleCheck: 1
+PowerLawMaxFires:             0
+CrownFireMethod:              1
+JulianStart:                  1
+SortFires:                    1
+FireListOnly:                 0
+#
+OutputFirePerims:             1
+OutputIgnitions:              1
+OutputFlameLengths:           1
+OutputArrivalDays:            1
+OutputArrivalTimes:           1
+EmberOutputs:                 1
+#
+Suppression:                  1
+SuppressionFactor:            2.0
+#
+NumSimulations:               5000
+#
+OutputsName:                  {study_area}_{foa_run}_pt{part}_{scenario}_{timepoint}
+ProgressFilePathname:	      ./{study_area}_{foa_run}_pt{part}_{scenario}_{timepoint}_progress.txt
