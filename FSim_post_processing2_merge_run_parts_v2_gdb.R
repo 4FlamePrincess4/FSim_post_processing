@@ -122,9 +122,9 @@ all_tifs_files <- list.files(path=wd,
 alltifs_stacks <- lapply(all_tifs_files, stack)
 
 #Create a data frame identifying each raster in the All stack and the corresponding band number.
-layers <- data.frame(layer_name=c("bp","flp_0to2","flp_2to4",
-                                  "flp_4to6","flp_6to8","flp_8to12",
-                                  "flp_12plus"),layer_num=c(seq(from=1,to=7)))
+layers <- data.frame(layer_name=c("bp","cflp_0to2","cflp_2to4",
+                                  "cflp_4to6","cflp_6to8","cflp_8to12",
+                                  "cflp_12plus"),layer_num=c(seq(from=1,to=7)))
 
 #Initialize lists to hold tifs in the for loop
 p_tifs <- list()
@@ -134,21 +134,12 @@ for(this_layer in 1:nrow(layers)){
   for(this_stack in seq_along(alltifs_stacks)){
     #Isolate the raster layer of interest
     this_raster <- raster::subset(alltifs_stacks[[this_stack]], layers$layer_num[this_layer])
-    #Also isolate the burn probability raster to make the conditional flp rasters unconditional
-    bp_raster <- raster::subset(alltifs_stacks[[this_stack]], 1)
-    #If the raster layer is one of the cflp layers, multiply by the bp raster
-    uncond_p_raster <- if(between(layers$layer_num[this_layer],2,7)){
-      this_raster*bp_raster
-    }else{
-      this_raster
-    }
-    #plot(uncond_p_raster)+title(paste0("unconditional ",layers$layer_name[this_layer],this_stack))
     #Print indicator
     print(paste0("Processing ",layers$layer_name[this_layer]," of part ",
                  this_stack,"..."))
     #Assign the raster to a variable with a name unique to the raster layer and stack,
     # and make it a list item.
-    p_tif <- list(assign(paste0(layers$layer_name[this_layer],"_",this_stack), uncond_p_raster))
+    p_tif <- list(assign(paste0(layers$layer_name[this_layer],"_",this_stack), this_raster))
     #Append the list item to a list of rasters
     p_tifs <- append(p_tifs, p_tif)
   }
@@ -269,6 +260,7 @@ for (i in seq_along(point_dbs)) {
 #save the file
 writeVector(pts_vector_all, paste0("./", "ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
               filetype= "ESRI Shapefile")
+
 
 
 
