@@ -180,7 +180,7 @@ all_perimeters <- list()
 for (i in seq_along(perimeter_dbs)) {
 
   # Extract run part (e.g., "pt1")
-  run_part <- sub(".*_(pt\\d+)_.*", "\\1", basename(point_dbs[i]))
+  run_part <- sub(".*_(pt\\d+)_.*", "\\1", basename(perimeter_dbs[i]))
   part_num <- as.numeric(sub("pt", "", run_part))
   
   # Season offset so seasons are unique across parts
@@ -269,6 +269,7 @@ for (i in seq_along(point_dbs)) {
 #save the file
 writeVector(pts_vector_all, paste0("./", "ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
               filetype= "ESRI Shapefile")
+
 
 
 
