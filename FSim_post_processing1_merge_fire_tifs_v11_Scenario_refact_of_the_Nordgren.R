@@ -456,7 +456,7 @@ process_fire_season <- function(each_season) {
     terra::values(no_fires_FL) <- NA
     season_fires_raster_stack <- c(no_fires_ID, no_fires_AD, no_fires_FL)
     names(season_fires_raster_stack) <- c("Fire_IDs", "Julian_Arrival_Days", "Flame_Lengths_m")
-    # Save the empty raster (optional, based on your workflow)
+    # Save the empty raster
     terra::writeRaster(season_fires_raster_stack, filename = paste0("./SeasonFires_merged_tifs_", opt$scenario,"_", opt$run_timepoint, "/Season", each_season,"_merged_IDs_ADs_FLs.tif"), overwrite = TRUE)
     rm(no_fires_ID, no_fires_AD, no_fires_FL, season_fires_raster_stack, foa_lcp)
     gc()
