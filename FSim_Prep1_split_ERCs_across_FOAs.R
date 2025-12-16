@@ -18,7 +18,8 @@ for (file in season_erc_total) {
   #Split into 8 equal parts of 2500 rows
   split_dfs <- df %>%
     mutate(part = ceiling(row_number() / 2500)) %>%
-    group_split(part)
+    group_split(part)%>%
+    lapply(select, -part)
   
   #Save each split
   for (i in seq_along(split_dfs)) {
@@ -26,3 +27,4 @@ for (file in season_erc_total) {
     write_csv(split_dfs[[i]], out_file)
   }
 }
+
