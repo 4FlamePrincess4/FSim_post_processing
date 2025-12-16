@@ -178,6 +178,13 @@ all_perimeters <- list()
 #Loop through each perimeter, manipulate, and then merge all into one file
 
 for (i in seq_along(perimeter_dbs)) {
+
+  # Extract run part (e.g., "pt1")
+  run_part <- sub(".*_(pt\\d+)_.*", "\\1", basename(point_dbs[i]))
+  part_num <- as.numeric(sub("pt", "", run_part))
+  
+  # Season offset so seasons are unique across parts
+  season_offset <- (part_num - 1) * seasons_per_part
   
   # Connect to SQLite DB
   con <- dbConnect(RSQLite::SQLite(), perimeter_dbs[i])
@@ -196,8 +203,14 @@ for (i in seq_along(perimeter_dbs)) {
   df2$GEOMETRY <- st_as_sfc(structure(as.list(df2$GEOMETRY), class = "blob"), crs = df3$srtext)
   df2_sf <- st_as_sf(df2)
   
-  # Add a source column if needed
+  # Add a source column
   df2_sf$source_db <- basename(perimeter_dbs[i])
+
+  # Rename and fix season numbering
+  df2_sf <- df2_sf %>%
+    mutate(Season = season + 1 + season_offset,
+           Season_FireID = paste0(Season, "_", fire_id),
+           run_part = run_part)
   
   # Store in list
   all_perimeters[[i]] <- df2_sf
@@ -228,7 +241,7 @@ for (i in seq_along(point_dbs)) {
   part_num <- as.numeric(sub("pt", "", run_part))
   
   # Season offset so seasons are unique across parts
-  season_offset <- (part_num - 1) * 5000
+  season_offset <- (part_num - 1) * seasons_per_part
   
   # Read database
   con <- dbConnect(RSQLite::SQLite(), point_dbs[i])
@@ -256,5 +269,6 @@ for (i in seq_along(point_dbs)) {
 #save the file
 writeVector(pts_vector_all, paste0("./", "ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
               filetype= "ESRI Shapefile")
+
 
 
