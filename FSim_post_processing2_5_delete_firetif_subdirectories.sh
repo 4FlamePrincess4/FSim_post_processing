@@ -20,7 +20,7 @@ ERROR_FILE="${SLURM_SUBMIT_DIR}/slurm-${SLURM_JOB_ID}.err"  # SLURM error file p
 
 set -euo pipefail
 
-for dir in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes}; do
+for dir in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes} "$BASE_DIR"/*.gdb; do
   # Skip if glob didn't match anything
   [[ -d "$dir" ]] || continue
 
@@ -34,5 +34,6 @@ for dir in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes}; do
   fi
 
 done
+
 
 
