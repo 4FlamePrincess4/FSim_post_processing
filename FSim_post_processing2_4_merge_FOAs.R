@@ -11,7 +11,9 @@ option_list = list(
   make_option(c("-t", "--run_timepoint"), type="character", default=NULL,
               help="timepoint for the scenario (mandatory)", metavar="character"),
   make_option(c("-e", "--study_area_lcp"), type="character", default=NULL,
-              help="path for study area tif file to which all the FOA rasters should snap", metavar="character")
+              help="path for study area tif file to which all the FOA rasters should snap", metavar="character"),
+  make_option(c("-f", "--foa_seasons_csv"), type="character", default=NULL,
+              help="CSV with FOA names and number of seasons", metavar="character")
 )
 
 # Parse the command-line options
@@ -23,7 +25,7 @@ setwd(opt$working_directory)
 wd <- getwd()
 
 # Create a directory to hold the results
-merged_dir <- paste0("./okwen_", opt$run_timepoint, "_", opt$scenario, "_merged_outputs")
+merged_dir <- paste0("./okawen_", opt$run_timepoint, "_", opt$scenario, "_merged_outputs")
 dir.create(merged_dir, showWarnings = FALSE)
 
 # Read the study area raster and extract CRS, origin, and extent
@@ -31,6 +33,29 @@ study_area <- raster(opt$study_area_lcp)
 study_area_crs <- crs(study_area)
 study_area_origin <- origin(study_area)
 study_area_extent <- extent(study_area)
+
+# Read in the foa weights for weighted averaging
+if (is.null(opt$foa_seasons_csv)) {
+  stop("You must provide a CSV with FOA season weights via --foa_seasons_csv")
+}
+
+foa_weights <- read_csv(opt$foa_seasons_csv) %>%
+  mutate(
+    foa = as.character(foa),
+    n_seasons = as.numeric(n_seasons)
+  )
+
+# Helper function to match directories to the foa names in the csv
+get_foa_weight <- function(dir, foa_weights) {
+  foa_match <- foa_weights %>%
+    filter(str_detect(dir, fixed(foa)))
+  
+  if (nrow(foa_match) != 1) {
+    stop(paste("Could not uniquely match FOA for directory:", dir))
+  }
+  
+  foa_match$n_seasons
+}
 
 # Locate subdirectories containing the scenario in their names
 target_dirs <- list.dirs(path = wd, recursive = FALSE, full.names = TRUE) %>%
@@ -43,12 +68,12 @@ if (length(target_dirs) == 0) {
 # Patterns to match each burn probability raster
 patterns <- c(
   ".*FullRun_bp\\.tif$",
-  ".*FullRun_flp_0to2\\.tif$",
-  ".*FullRun_flp_2to4\\.tif$",
-  ".*FullRun_flp_4to6\\.tif$",
-  ".*FullRun_flp_6to8\\.tif$",
-  ".*FullRun_flp_8to12\\.tif$",
-  ".*FullRun_flp_12plus\\.tif$"
+  ".*FullRun_cflp_0to2\\.tif$",
+  ".*FullRun_cflp_2to4\\.tif$",
+  ".*FullRun_cflp_4to6\\.tif$",
+  ".*FullRun_cflp_6to8\\.tif$",
+  ".*FullRun_cflp_8to12\\.tif$",
+  ".*FullRun_cflp_12plus\\.tif$"
 )
 
 # Process each pattern
@@ -65,30 +90,80 @@ for (pattern in patterns) {
     next
   }
   
-  # Load and process the rasters
-  processed_rasters <- lapply(matched_files, function(file) {
-    r <- raster(file)
-    # Match CRS, origin, and extent to the study area
-    crs(r) <- study_area_crs
-    origin(r) <- study_area_origin
-    r <- raster::extend(r, study_area_extent, value = NA)
-    return(r)
-  })
-  
-  # Merge the processed rasters
-  if (length(processed_rasters) > 1) {
-    merged_raster <- do.call(raster::mosaic, c(processed_rasters, fun = sum, na.rm = TRUE, tolerance = 4))
-  } else {
-    merged_raster <- processed_rasters[[1]]
+  if(pattern == ".*FullRun_bp\\.tif$"){
+    # Load and process the rasters
+    processed_rasters <- lapply(matched_files, function(file) {
+      r <- raster(file)
+      # Match CRS, origin, and extent to the study area
+      crs(r) <- study_area_crs
+      origin(r) <- study_area_origin
+      r <- raster::extend(r, study_area_extent, value = NA)
+      return(r)
+    })
+    
+    # Merge the processed rasters
+    if (length(processed_rasters) > 1) {
+      merged_raster <- do.call(raster::mosaic, c(processed_rasters, fun = sum, na.rm = TRUE, tolerance = 4))
+    } else {
+      merged_raster <- processed_rasters[[1]]
+    }
+    
+    # Define the output filename
+    output_filename <- paste0(
+      merged_dir, "/okawen_", opt$run_timepoint, "_", opt$scenario, "_", 
+      sub(".*FullRun_", "FullRun_", sub("\\\\.tif\\$", "", pattern)), "_merged.tif"
+    )
+    
+    # Save the merged raster
+    writeRaster(merged_raster, output_filename, format = "GTiff", overwrite = TRUE)
+    message(paste("Merged raster saved to:", output_filename))
+  } else{ #Separate process for the cflp rasters
+    # Load, align, and weight rasters
+    weighted_rasters <- lapply(matched_files, function(file) {
+      
+      r <- raster(file)
+      
+      # Match CRS, origin, extent
+      crs(r) <- study_area_crs
+      origin(r) <- study_area_origin
+      r <- raster::extend(r, study_area_extent, value = NA)
+      
+      # Identify FOA from parent directory
+      this_dir <- dirname(file)
+      weight <- get_foa_weight(this_dir, foa_weights)
+      
+      # Apply weight
+      r * weight
+    })
+    
+    # Sum of weights
+    weights_sum <- matched_files %>%
+      dirname() %>%
+      unique() %>%
+      map_dbl(~ get_foa_weight(.x, foa_weights)) %>%
+      sum()
+    
+    if (length(weighted_rasters) > 1) {
+      weighted_sum <- do.call(
+        raster::mosaic,
+        c(weighted_rasters, fun = sum, na.rm = TRUE, tolerance = 4)
+      )
+    } else {
+      weighted_sum <- weighted_rasters[[1]]
+    }
+    
+    # Final weighted mean
+    merged_raster <- weighted_sum / weights_sum
+    
+    # Output filename
+    output_filename <- paste0(
+      merged_dir, "/okawen_", opt$run_timepoint, "_", opt$scenario, "_", 
+      sub(".*FullRun_", "FullRun_", sub("\\\\.tif\\$", "", pattern)), "_merged.tif"
+    )
+    
+    writeRaster(merged_raster, output_filename,
+                format = "GTiff", overwrite = TRUE)
+    
+    message(paste("Weighted CFLP raster saved to:", output_filename))
   }
-  
-  # Define the output filename
-  output_filename <- paste0(
-  merged_dir, "/okwen_", opt$run_timepoint, "_", opt$scenario, "_", 
-  sub(".*FullRun_", "FullRun_", sub("\\\\.tif\\$", "", pattern)), "_merged.tif"
-)
-  
-  # Save the merged raster
-  writeRaster(merged_raster, output_filename, format = "GTiff", overwrite = TRUE)
-  message(paste("Merged raster saved to:", output_filename))
 }
