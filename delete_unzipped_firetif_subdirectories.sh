@@ -26,9 +26,11 @@ for dir in *_FlameLengths *_ArrivalDays *_ArrivalTimes; do
   zipfile="${dir}.zip"
 
   if [[ -f "$zipfile" ]]; then
-    echo "[DRY RUN] Would delete directory: $dir (zip found: $zipfile)"
+    echo "Deleting directory: $dir (zip found: $zipfile)"
+    rm -rf "$dir"
   else
-    echo "[SKIP] No zip found for: $dir"
+    echo "No zip found for: $dir"
   fi
 
 done
+
