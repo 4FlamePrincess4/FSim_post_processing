@@ -15,11 +15,12 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
 
-cd ..
+BASE_DIR="/project/wildland_fire_smoke_tradeoff/okawen_foa1c_r17_LF2020_TM_baseline_time0"   # Replace with the base directory 
+ERROR_FILE="${SLURM_SUBMIT_DIR}/slurm-${SLURM_JOB_ID}.err"  # SLURM error file path
 
 set -euo pipefail
 
-for dir in *_FlameLengths *_ArrivalDays *_ArrivalTimes; do
+for dir in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes}; do
   # Skip if glob didn't match anything
   [[ -d "$dir" ]] || continue
 
@@ -33,4 +34,5 @@ for dir in *_FlameLengths *_ArrivalDays *_ArrivalTimes; do
   fi
 
 done
+
 
