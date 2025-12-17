@@ -107,7 +107,7 @@ for(fire_record in 1:nrow(firelists)){
   }
 }
 
-write_csv(firelists, paste0("./", foa_run,"_",scenario, "_", run_timepoint, "_merged_firelists.csv"))
+write_csv(firelists, paste0("./", opt$foa_run,"_",opt$scenario, "_", opt$run_timepoint, "_merged_firelists.csv"))
 
 #STEP 3: Merge (average) probability rasters from all parts of each run
 ###############################################
@@ -213,7 +213,7 @@ for (i in seq_along(perimeter_dbs)) {
 all_perimeters_sf <- do.call(rbind, all_perimeters)
 
 # Write to File Geodatabase
-out_gdb <-  paste0("./perimeters_all_", foa_run, "_", scenario, "_", run_timepoint, ".gdb")
+out_gdb <-  paste0("./perimeters_all_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".gdb")
 st_write(all_perimeters_sf, dsn = out_gdb, layer = "perimeters", driver = "OpenFileGDB")
 
 #STEP 5: Export ignitions for all fires (combine across parts)
@@ -257,9 +257,11 @@ for (i in seq_along(point_dbs)) {
   pts_vector_all <- if (is.null(pts_vector_all)) pts_vector else rbind(pts_vector_all, pts_vector)
 }
   
-#save the file
+# Write to File Geodatabase
+out_gdb <-  paste0("./ignitions_all_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".gdb")
 writeVector(pts_vector_all, paste0("./", "ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
-              filetype= "ESRI Shapefile")
+              driver="OpenFileGDB")
+
 
 
 
