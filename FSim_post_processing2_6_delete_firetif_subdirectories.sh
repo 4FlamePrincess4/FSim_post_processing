@@ -18,6 +18,23 @@
 BASE_DIR="/project/wildland_fire_smoke_tradeoff/okawen_foa1c_r17_LF2020_TM_baseline_time0"   # Replace with the base directory 
 ERROR_FILE="${SLURM_SUBMIT_DIR}/slurm-${SLURM_JOB_ID}.err"  # SLURM error file path
 
+delete_dir() {
+  local d="$1"
+  local max_tries=5
+  local try=1
+
+  while [[ -d "$d" && $try -le $max_tries ]]; do
+    rm -rf "$d" 2>/dev/null || true
+    sleep 2
+    ((try++))
+  done
+
+  if [[ -d "$d" ]]; then
+    echo "ERROR: Could not fully delete $d after $max_tries attempts" >&2
+    return 1
+  fi
+}
+
 set -euo pipefail
 
 for dir in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes} "$BASE_DIR"/*.gdb; do
@@ -28,12 +45,13 @@ for dir in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes} "$BASE_DIR"/*.gd
 
   if [[ -f "$zipfile" ]]; then
     echo "Deleting directory: $dir (zip found: $zipfile)"
-    rm -rf "$dir"
+    delete_dir "$dir" || echo "WARNING: Incomplete delete: $dir" >&2
   else
     echo "No zip found for: $dir"
   fi
 
 done
+
 
 
 
