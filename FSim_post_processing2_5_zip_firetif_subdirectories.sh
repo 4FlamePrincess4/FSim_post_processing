@@ -2,6 +2,8 @@
 # Note: Before running this on Linux, you'll need to run this line to remove stupid Windows characters:
 # sed -i -e 's/\r$//' rename_tifs.sh
 
+set -euo pipefail
+
 #SBATCH --job-name=120BOzip
 #SBATCH --account=wildland_fire_smoke_tradeoff
 #SBATCH --partition=ceres
@@ -19,12 +21,13 @@ BASE_DIR="/project/wildland_fire_smoke_tradeoff/okawen_foa1c_r17_LF2020_TM_basel
 ERROR_FILE="${SLURM_SUBMIT_DIR}/slurm-${SLURM_JOB_ID}.err"  # SLURM error file path
 
 # Loop through subdirectories ending in ArrivalDays, FlameLengths, or ArrivalTimes to create individual zip files
- for DIR in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes,gdb}; do
-    # Skip if no matching subdirectories are found
-    [[ ! -d "$DIR" ]] && continue
+ shopt -s nullglob   # Prevent literal globs when no matches exist
 
-    ZIP_NAME="$BASE_DIR/$(basename "$DIR").zip"  # Save the zip file in the BASE_DIR
-    zip -r "$ZIP_NAME" "$DIR" 2>/dev/null
-    echo "Compressed $DIR into $ZIP_NAME."
- done
-fi
+for DIR in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes,gdb}; do
+    echo "Zipping $DIR"
+    ZIP_NAME="$BASE_DIR/$(basename "$DIR").zip"
+    zip -r "$ZIP_NAME" "$DIR"
+done
+
+echo "All zips completed successfully."
+exit 0
