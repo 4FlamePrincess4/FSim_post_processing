@@ -19,7 +19,7 @@ BASE_DIR="/project/wildland_fire_smoke_tradeoff/okawen_foa1c_r17_LF2020_TM_basel
 ERROR_FILE="${SLURM_SUBMIT_DIR}/slurm-${SLURM_JOB_ID}.err"  # SLURM error file path
 
 # Loop through subdirectories ending in ArrivalDays, FlameLengths, or ArrivalTimes to create individual zip files
- for DIR in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes} "$BASE_DIR"/*.gdb; do
+ for DIR in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes,gdb}; do
     # Skip if no matching subdirectories are found
     [[ ! -d "$DIR" ]] && continue
 
