@@ -2,8 +2,6 @@
 # Note: Before running this on Linux, you'll need to run this line to remove stupid Windows characters:
 # sed -i -e 's/\r$//' rename_tifs.sh
 
-set -euo pipefail
-
 #SBATCH --job-name=120BOzip
 #SBATCH --account=wildland_fire_smoke_tradeoff
 #SBATCH --partition=ceres
@@ -16,6 +14,8 @@ set -euo pipefail
 #SBATCH --mail-type=BEGIN
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
+
+set -euo pipefail
 
 BASE_DIR="/project/wildland_fire_smoke_tradeoff/okawen_foa1c_r17_LF2020_TM_baseline_time0"   # Replace with the base directory 
 ERROR_FILE="${SLURM_SUBMIT_DIR}/slurm-${SLURM_JOB_ID}.err"  # SLURM error file path
