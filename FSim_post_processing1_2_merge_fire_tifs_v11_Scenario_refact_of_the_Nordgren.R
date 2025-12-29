@@ -452,9 +452,9 @@ process_fire_season <- function(each_season) {
     return(invisible(NULL))
   }
   #Fetch vectors of other run information
-  season_fire_perims <- season_fire_perims |>
-        dplyr::arrange(fire_id)
-  this_season_fireIDs <- as.character(season_fire_perims$fire_id)
+  this_season_fires <- this_season_fires |>
+        dplyr::arrange(FireID)
+  this_season_fireIDs <- as.character(this_season_fires$FireID)
   this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
   this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
   this_season_time <- rep(opt$run_timepoint, length(this_season_fireIDs))
@@ -494,9 +494,9 @@ process_fire_season <- function(each_season) {
       return(invisible(NULL))
     }
     #Fetch vectors of other run information
-    season_fire_perims <- season_fire_perims |>
-        dplyr::arrange(fire_id)
-    this_season_fireIDs <- as.character(season_fire_perims$fire_id)
+    this_season_fires <- this_season_fires |>
+        dplyr::arrange(FireID)
+    this_season_fireIDs <- as.character(this_season_fires$FireID)
     this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
     this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
     this_season_time <- rep(opt$run_timepoint, length(this_season_fireIDs))
@@ -540,21 +540,21 @@ process_fire_season <- function(each_season) {
     if(nrow(this_season_fires) == 1){
       #Check for cases where, after filtering out fires with no burned area, there was only one fire left in the season.
       #Fetch vectors of other run information
-      season_fire_perims <- season_fire_perims |>
-        dplyr::arrange(fire_id)
-     this_season_fireIDs <- as.character(season_fire_perims$fire_id)
-     this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
-     this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
-     this_season_time <- rep(opt$run_timepoint, length(this_season_fireIDs))
+      this_season_fires <- this_season_fires |>
+        dplyr::arrange(FireID)
+      this_season_fireIDs <- as.character(this_season_fires$FireID)
+      this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
+      this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
+      this_season_time <- rep(opt$run_timepoint, length(this_season_fireIDs))
      this_season_foa_run <- rep(opt$foa_run, length(this_season_fireIDs))
-     process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt,this_season_scen,this_season_time)
+      process_single_fire_season(each_season, this_season_fireIDs, this_season_foa_run, this_season_pt,this_season_scen,this_season_time)
     } 
     if(nrow(this_season_fires) >=2) {
       #Check for cases where, after filtering out fires with no burned area, there are still 2 or more fires left in the season. Now you can check for overlap and delete overburn.
       #Fetch vectors of other run information
-      season_fire_perims <- season_fire_perims |>
-        dplyr::arrange(fire_id)
-      this_season_fireIDs <- as.character(season_fire_perims$fire_id)
+      this_season_fires <- this_season_fires |>
+        dplyr::arrange(FireID)
+      this_season_fireIDs <- as.character(this_season_fires$FireID)
       this_season_pt <- as.character(rep(this_season_fires$Part[1], length(this_season_fireIDs)))
       this_season_scen <- rep(opt$scenario, length(this_season_fireIDs))
       this_season_time <- rep(opt$run_timepoint, length(this_season_fireIDs))
@@ -567,7 +567,9 @@ process_fire_season <- function(each_season) {
       #Convert these perimeters to an sf object
       season_fire_perims$GEOMETRY <- sf::st_as_sfc(structure(as.list(season_fire_perims$GEOMETRY),class="blob"), crs = ref_sys$srtext)
       season_fire_perims <- sf::st_as_sf(season_fire_perims)
-           
+      season_fire_perims <- season_fire_perims |>
+        dplyr::arrange(fire_id)
+      this_season_fireIDs <- as.character(season_fire_perims$fire_id)
       #Check whether any of the fire perimeters for this season overlap. The result is a matrix of logical outcomes.
       overlap_matrix <- sf::st_intersects(season_fire_perims, sparse = FALSE)
       #Use the function find_overlap_fireIDs to determine which fires overlap with which other fires.
