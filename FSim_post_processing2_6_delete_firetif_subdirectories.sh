@@ -37,7 +37,7 @@ delete_dir() {
 
 set -euo pipefail
 
-for dir in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes} "$BASE_DIR"/*.gdb; do
+for dir in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes,gdb}; do
   # Skip if glob didn't match anything
   [[ -d "$dir" ]] || continue
 
@@ -51,6 +51,7 @@ for dir in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes} "$BASE_DIR"/*.gd
   fi
 
 done
+
 
 
 
