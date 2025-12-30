@@ -2,6 +2,10 @@ The FSim_post_processing directory contains R and bash scripts to post-process F
 The first number indicates when the script should be launched; some scripts can be launched immediately after FSim finishes, while others are dependent on prior post-processing scripts finishing. 
 The second number indexes the scripts in order of importance for each step. 
 
+The R subdirectory contains the following post-processing R scripts.
+The bash subdirectory contains scripts to launch the post-processing scripts as slurm jobs in a cluster environment. 
+The number of the bash script corresponds to the R script with the same number.
+
 1. FSim_post_processing1_1_merge_run_parts_v2_gdb.R
    This script combines run parts. It 1) merges the FireSizeList.csv files, 2) takes a weighted average of the burn probability and conditional flame length probability rasters (weighted by the seasons in each part), 
    3) reads in the perimeter blobs (binary large objects), merges them into a single vector object, then saves them to an ESRI geodatabase, and 
