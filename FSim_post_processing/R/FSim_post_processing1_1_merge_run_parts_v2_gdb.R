@@ -213,9 +213,9 @@ for (i in seq_along(perimeter_dbs)) {
 all_perimeters_sf <- do.call(rbind, all_perimeters)
 
 # Write to File Geodatabase
-out_gdb <-  paste0("./perimeters_all_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".gdb")
-writeVector(all_perimeters_sf, paste0("./", "perimeters_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_gdb",),
-              driver="OpenFileGDB")
+out_gdb <-  paste0("./perimeters_all_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_gdb")
+sf::st_write(all_perimeters_sf, dsn = out_gdb, layer = paste0("perimeters_", opt$foa_run, "_", opt$scenario, "_",
+            opt$run_timepoint), driver="OpenFileGDB")
 
 #STEP 5: Export ignitions for all fires (combine across parts)
 #############################################################
@@ -259,7 +259,8 @@ for (i in seq_along(point_dbs)) {
 }
   
 # Write to File Geodatabase
-out_gdb <-  paste0("./ignitions_all_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".gdb")
-writeVector(pts_vector_all, paste0("./", "ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_gdb",),
-              driver="OpenFileGDB")
+out_gdb <-  paste0("./ignitions_all_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_gdb")
+writeVector(pts_vector_all, filename = out_gdb, layer = paste0("./", "ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
+              filetype="OpenFileGDB", overwrite=TRUE)
+
 
