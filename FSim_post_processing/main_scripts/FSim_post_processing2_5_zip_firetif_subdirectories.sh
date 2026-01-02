@@ -23,7 +23,7 @@ ERROR_FILE="${SLURM_SUBMIT_DIR}/slurm-${SLURM_JOB_ID}.err"  # SLURM error file p
 # Loop through subdirectories ending in ArrivalDays, FlameLengths, or ArrivalTimes to create individual zip files
  shopt -s nullglob   # Prevent literal globs when no matches exist
 
-for DIR in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes,gdb}; do
+for DIR in "$BASE_DIR"/*{ArrivalDays,FlameLengths,ArrivalTimes} "$BASE_DIR"/*.gdb; do
     echo "Zipping $DIR"
     ZIP_NAME="$BASE_DIR/$(basename "$DIR").zip"
     zip -r "$ZIP_NAME" "$DIR"
