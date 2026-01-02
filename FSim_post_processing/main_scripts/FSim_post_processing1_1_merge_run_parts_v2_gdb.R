@@ -144,11 +144,37 @@ for(this_layer in 1:nrow(layers)){
     p_tifs <- append(p_tifs, p_tif)
   }
   #Take the average of all the rasters in the list
-  ptif_stack <- do.call(stack,p_tifs)
-  print("Processing the weighted mean of the stack of part rasters...")
-  mean_p <- raster::weighted.mean(ptif_stack,seasons_per_part,na.rm=TRUE)
+  ptif_stack <- do.call(stack, p_tifs)
+  print("Processing merged raster across run parts...")
+  layer_name <- layers$layer_name[this_layer]
+  if (layer_name == "bp") {
+   # BP: simple weighted mean
+   mean_p <- raster::weighted.mean(
+     ptif_stack,
+     seasons_per_part,
+     na.rm = TRUE)
+  } else {
+    # CFLP: BP-conditioned weighted mean
+    # Extract BP layer (layer 1) from each stack
+    bp_stack <- stack(lapply(seq_along(alltifs_stacks), function(i) {
+    raster::subset(alltifs_stacks[[i]], 1)
+  }))
+   # Numerator: CFLP × BP × seasons
+    numerator <- ptif_stack * bp_stack
+    numerator <- raster::weighted.mean(
+      numerator,
+      seasons_per_part,
+      na.rm = TRUE)
+   # Denominator: BP × seasons
+    denominator <- raster::weighted.mean(
+      bp_stack,
+      seasons_per_part,
+      na.rm = TRUE
+    )
+    mean_p <- numerator / denominator
+  }
   #Plot the averaged raster
-  plot(mean_p)+title(paste0(opt$foa_run,"_",opt$scenario, "_", opt$run_timepoint,"_FullRun_",layers$layer_name[this_layer]))
+  #plot(mean_p)+title(paste0(opt$foa_run,"_",opt$scenario, "_", opt$run_timepoint,"_FullRun_",layers$layer_name[this_layer]))
   #Write the averaged raster to the working directory
   writeRaster(mean_p,paste0(opt$foa_run,"_",opt$scenario, "_", opt$run_timepoint,"_FullRun_",layers$layer_name[this_layer]),
               format="GTiff", overwrite=TRUE)
@@ -262,6 +288,7 @@ for (i in seq_along(point_dbs)) {
 out_gdb <-  paste0("./ignitions_all_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".gdb")
 writeVector(pts_vector_all, filename = out_gdb, layer = paste0("ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
               filetype="OpenFileGDB", overwrite=TRUE)
+
 
 
 
