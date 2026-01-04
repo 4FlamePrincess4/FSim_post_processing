@@ -49,18 +49,15 @@ foa_weights <- read_csv(opt$foa_seasons_csv) %>%
 get_foa_weight <- function(dir, foa_weights) {
   foa_match <- foa_weights %>%
     filter(str_detect(dir, fixed(foa)))
-  
   if (nrow(foa_match) != 1) {
     stop(paste("Could not uniquely match FOA for directory:", dir))
   }
-  
   foa_match$n_seasons
 }
 
 # Locate subdirectories containing the scenario in their names
 target_dirs <- list.dirs(path = wd, recursive = FALSE, full.names = TRUE) %>%
   .[grepl(opt$scenario, .)]
-
 if (length(target_dirs) == 0) {
   stop("No matching directories found for the specified scenario.")
 }
@@ -84,12 +81,10 @@ for (pattern in patterns) {
   matched_files <- unlist(lapply(target_dirs, function(dir) {
     list.files(path = dir, pattern = pattern, full.names = TRUE)
   }))
-  
   if (length(matched_files) == 0) {
     message(paste("No rasters found for pattern:", pattern))
     next
   }
-  
   if(pattern == ".*FullRun_bp\\.tif$"){
     # Load and process the rasters
     processed_rasters <- lapply(matched_files, function(file) {
@@ -100,70 +95,54 @@ for (pattern in patterns) {
       r <- raster::extend(r, study_area_extent, value = NA)
       return(r)
     })
-    
     # Merge the processed rasters
     if (length(processed_rasters) > 1) {
       merged_raster <- do.call(raster::mosaic, c(processed_rasters, fun = sum, na.rm = TRUE, tolerance = 4))
     } else {
       merged_raster <- processed_rasters[[1]]
     }
-    
     # Define the output filename
     output_filename <- paste0(
       merged_dir, "/okawen_", opt$run_timepoint, "_", opt$scenario, "_", 
       sub(".*FullRun_", "FullRun_", sub("\\\\.tif\\$", "", pattern)), "_merged.tif"
     )
-    
     # Save the merged raster
     writeRaster(merged_raster, output_filename, format = "GTiff", overwrite = TRUE)
     message(paste("Merged raster saved to:", output_filename))
   } else {  # Separate process for the CFLP rasters (BP-conditioned)
-
   # Load, align, and weight CFLP rasters by BP × seasons
   weighted_cflp <- lapply(matched_files, function(file) {
-
     # CFLP raster
     cflp <- raster(file)
-
     # Corresponding BP raster
     bp_file <- sub("cflp_.*", "bp", file)
     if (!file.exists(bp_file)) {
       stop(paste("Missing BP raster for:", file))
     }
     bp <- raster(bp_file)
-
     # Match CRS, origin, extent
     crs(cflp) <- study_area_crs
     origin(cflp) <- study_area_origin
     cflp <- raster::extend(cflp, study_area_extent, value = NA)
-
     crs(bp) <- study_area_crs
     origin(bp) <- study_area_origin
     bp <- raster::extend(bp, study_area_extent, value = NA)
-
     # FOA weight
     this_dir <- dirname(file)
     n_seasons <- get_foa_weight(this_dir, foa_weights)
-
     # Numerator contribution
     cflp * bp * n_seasons
   })
-
   # Denominator: BP × seasons
   weighted_bp <- lapply(matched_files, function(file) {
-
     bp_file <- sub("cflp_.*", "bp", file)
     bp <- raster(bp_file)
-
     crs(bp) <- study_area_crs
     origin(bp) <- study_area_origin
     bp <- raster::extend(bp, study_area_extent, value = NA)
-
     n_seasons <- get_foa_weight(dirname(file), foa_weights)
-
     bp * n_seasons
   })
-
   # Sum numerator
   cflp_sum <- if (length(weighted_cflp) > 1) {
     do.call(raster::mosaic,
@@ -171,7 +150,6 @@ for (pattern in patterns) {
   } else {
     weighted_cflp[[1]]
   }
-
   # Sum denominator
   bp_sum <- if (length(weighted_bp) > 1) {
     do.call(raster::mosaic,
@@ -179,20 +157,16 @@ for (pattern in patterns) {
   } else {
     weighted_bp[[1]]
   }
-
   # Final conditional CFLP
   merged_raster <- cflp_sum / bp_sum
-
   # Output filename
   output_filename <- paste0(
     merged_dir, "/okawen_", opt$run_timepoint, "_", opt$scenario, "_",
     sub(".*FullRun_", "FullRun_", sub("\\\\.tif\\$", "", pattern)), "_merged.tif"
   )
-
   writeRaster(merged_raster,
               output_filename,
               format = "GTiff",
               overwrite = TRUE)
-
   message(paste("BP-weighted CFLP raster saved to:", output_filename))
 }
