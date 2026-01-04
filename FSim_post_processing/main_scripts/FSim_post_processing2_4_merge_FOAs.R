@@ -159,6 +159,8 @@ for (pattern in patterns) {
   }
   # Final conditional CFLP
   merged_raster <- cflp_sum / bp_sum
+  # Eliminate introduced bp zeros
+  merged_raster[bp_sum <= 0] <- NA
   # Output filename
   output_filename <- paste0(
     merged_dir, "/okawen_", opt$run_timepoint, "_", opt$scenario, "_",
@@ -170,3 +172,4 @@ for (pattern in patterns) {
               overwrite = TRUE)
   message(paste("BP-weighted CFLP raster saved to:", output_filename))
 }
+
