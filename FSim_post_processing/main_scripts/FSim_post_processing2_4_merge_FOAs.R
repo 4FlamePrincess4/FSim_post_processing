@@ -96,11 +96,7 @@ for (pattern in patterns) {
       return(r)
     })
     # Merge the processed rasters
-    if (length(processed_rasters) > 1) {
-      merged_raster <- do.call(raster::mosaic, c(processed_rasters, fun = sum, na.rm = TRUE, tolerance = 4))
-    } else {
-      merged_raster <- processed_rasters[[1]]
-    }
+    merged_raster <- do.call(raster::mosaic, c(processed_rasters, fun = sum, na.rm = TRUE, tolerance = 4))
     # Define the output filename
     output_filename <- paste0(
       merged_dir, "/okawen_", opt$run_timepoint, "_", opt$scenario, "_", 
@@ -110,8 +106,8 @@ for (pattern in patterns) {
     writeRaster(merged_raster, output_filename, format = "GTiff", overwrite = TRUE)
     message(paste("Merged raster saved to:", output_filename))
   } else {  # Separate process for the CFLP rasters (BP-conditioned)
-  # Load, align, and weight CFLP rasters by BP × seasons
-  weighted_cflp <- lapply(matched_files, function(file) {
+    # Load, align, and weight CFLP rasters by BP × seasons
+    weighted_cflp <- lapply(matched_files, function(file) {
     # CFLP raster
     cflp <- raster(file)
     # Corresponding BP raster
@@ -144,23 +140,17 @@ for (pattern in patterns) {
     bp * n_seasons
   })
   # Sum numerator
-  cflp_sum <- if (length(weighted_cflp) > 1) {
-    do.call(raster::mosaic,
-            c(weighted_cflp, fun = sum, na.rm = TRUE, tolerance = 4))
-  } else {
-    weighted_cflp[[1]]
-  }
+  cflp_sum <- do.call(raster::mosaic,
+            c(weighted_cflp, fun = sum, na.rm = TRUE))
+  message(paste("cflp sum (numerator) is equal to ", cflp_sum))
   # Sum denominator
-  bp_sum <- if (length(weighted_bp) > 1) {
-    do.call(raster::mosaic,
-            c(weighted_bp, fun = sum, na.rm = TRUE, tolerance = 4))
-  } else {
-    weighted_bp[[1]]
-  }
+  bp_sum <- do.call(raster::mosaic,
+            c(weighted_bp, fun = sum, na.rm = TRUE))
+  message(paste("bp sum (denominator) is equal to ", bp_sum))
   # Final conditional CFLP
   merged_raster <- cflp_sum / bp_sum
   # Eliminate introduced bp zeros
-  merged_raster[bp_sum <= 0] <- NA
+  #merged_raster[bp_sum <= 0] <- NA
   # Output filename
   output_filename <- paste0(
     merged_dir, "/okawen_", opt$run_timepoint, "_", opt$scenario, "_",
@@ -172,4 +162,5 @@ for (pattern in patterns) {
               overwrite = TRUE)
   message(paste("BP-weighted CFLP raster saved to:", output_filename))
 }
+
 
