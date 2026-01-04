@@ -145,6 +145,8 @@ for(this_layer in 1:nrow(layers)){
   }
   #Take the average of all the rasters in the list
   ptif_stack <- do.call(stack, p_tifs)
+  #Add a catch in case not all rasters are listed
+  stopifnot(length(seasons_per_part) == nlayers(ptif_stack))
   print("Processing merged raster across run parts...")
   layer_name <- layers$layer_name[this_layer]
   if (layer_name == "bp") {
@@ -288,6 +290,7 @@ for (i in seq_along(point_dbs)) {
 out_gdb <-  paste0("./ignitions_all_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".gdb")
 writeVector(pts_vector_all, filename = out_gdb, layer = paste0("ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
               filetype="OpenFileGDB", overwrite=TRUE)
+
 
 
 
