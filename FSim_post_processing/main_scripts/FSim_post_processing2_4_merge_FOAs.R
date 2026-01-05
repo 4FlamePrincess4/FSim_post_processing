@@ -134,7 +134,7 @@ for (pattern in patterns) {
   })
   # Denominator: BP × seasons
   weighted_bp <- lapply(matched_files, function(file) {
-    bp_file <- sub("cflp_.*", "bp", file)
+    bp_file <- sub("_cflp_[^/]+\\.tif$", "_bp.tif", file)
     bp <- raster(bp_file)
     crs(bp) <- study_area_crs
     origin(bp) <- study_area_origin
@@ -165,4 +165,3 @@ for (pattern in patterns) {
               overwrite = TRUE)
   message(paste("BP-weighted CFLP raster saved to:", output_filename))
 }}
-
