@@ -75,7 +75,7 @@ part_seasons_list <- list()
 for(j in 1:length(seasons_per_part)){
   if(exists("part_seasons")){
     part_seasons <- c((1+max(part_seasons)):(cumsum_seasons[j]))
-    print(part_seasons)
+    #print(part_seasons)
   }else{
     part_seasons <- c(1:seasons_per_part[j])
   }
@@ -156,27 +156,24 @@ for(this_layer in 1:nrow(layers)){
      seasons_per_part,
      na.rm = TRUE)
   } else {
-    # CFLP: BP-conditioned weighted mean
-    # Extract BP layer (layer 1) from each stack
+    # CFLP: BP-conditioned weighted average
+    # BP stack (one layer per part)
     bp_stack <- stack(lapply(seq_along(alltifs_stacks), function(i) {
-    raster::subset(alltifs_stacks[[i]], 1)
-  }))
-   # Mask the CFLP raster with the BP raster to avoid cases where CFLP = 0 and BP = NA
-   ptif_stack <- terra::mask(ptif_stack, bp_stack)
-   # Numerator: CFLP × BP × seasons
-    numerator <- ptif_stack * bp_stack
-    numerator <- raster::weighted.mean(
-      numerator,
-      seasons_per_part,
-      na.rm = TRUE)
-   # Denominator: BP × seasons
-    denominator <- raster::weighted.mean(
-      bp_stack,
-      seasons_per_part,
-      na.rm = TRUE
-    )
+      raster::subset(alltifs_stacks[[i]], 1)
+    }))
+    # Mask CFLP where BP is NA
+    ptif_stack <- raster::mask(ptif_stack, bp_stack)
+    # Expand seasons_per_part to raster layers
+    season_weights <- stack(lapply(seasons_per_part, function(n) {
+      bp_stack[[1]] * n
+    }))
+    # Numerator: sum(CFLP × BP × seasons)
+    numerator <- sum(ptif_stack * bp_stack * season_weights, na.rm = TRUE)
+    # Denominator: sum(BP × seasons)
+    denominator <- sum(bp_stack * season_weights, na.rm = TRUE)
+    # Final CFLP
     mean_p <- numerator / denominator
-  }
+    }
   #Plot the averaged raster
   #plot(mean_p)+title(paste0(opt$foa_run,"_",opt$scenario, "_", opt$run_timepoint,"_FullRun_",layers$layer_name[this_layer]))
   #Write the averaged raster to the working directory
@@ -292,9 +289,3 @@ for (i in seq_along(point_dbs)) {
 out_gdb <-  paste0("./ignitions_all_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".gdb")
 writeVector(pts_vector_all, filename = out_gdb, layer = paste0("ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
               filetype="OpenFileGDB", overwrite=TRUE)
-
-
-
-
-
-
