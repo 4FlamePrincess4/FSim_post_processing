@@ -161,6 +161,8 @@ for(this_layer in 1:nrow(layers)){
     bp_stack <- stack(lapply(seq_along(alltifs_stacks), function(i) {
     raster::subset(alltifs_stacks[[i]], 1)
   }))
+   # Mask the CFLP raster with the BP raster to avoid cases where CFLP = 0 and BP = NA
+   ptif_stack <- terra::mask(ptif_stack, bp_stack)
    # Numerator: CFLP × BP × seasons
     numerator <- ptif_stack * bp_stack
     numerator <- raster::weighted.mean(
@@ -290,6 +292,7 @@ for (i in seq_along(point_dbs)) {
 out_gdb <-  paste0("./ignitions_all_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".gdb")
 writeVector(pts_vector_all, filename = out_gdb, layer = paste0("ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
               filetype="OpenFileGDB", overwrite=TRUE)
+
 
 
 
