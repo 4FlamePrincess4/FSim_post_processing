@@ -163,7 +163,4 @@ for (pattern in patterns) {
               format = "GTiff",
               overwrite = TRUE)
   message(paste("BP-weighted CFLP raster saved to:", output_filename))
-}
-
-
-
+}}
