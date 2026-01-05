@@ -123,6 +123,8 @@ for (pattern in patterns) {
     crs(bp) <- study_area_crs
     origin(bp) <- study_area_origin
     bp <- raster::extend(bp, study_area_extent, value = NA)
+    # Mask the CFLP raster wherever the BP is NA
+    cflp <- raster::mask(cflp, bp)
     # FOA weight
     this_dir <- dirname(file)
     n_seasons <- get_foa_weight(this_dir, foa_weights)
@@ -162,5 +164,6 @@ for (pattern in patterns) {
               overwrite = TRUE)
   message(paste("BP-weighted CFLP raster saved to:", output_filename))
 }
+
 
 
