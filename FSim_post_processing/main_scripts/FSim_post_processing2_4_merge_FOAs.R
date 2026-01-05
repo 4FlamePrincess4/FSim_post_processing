@@ -152,8 +152,6 @@ for (pattern in patterns) {
   message(paste("bp sum (denominator) is equal to ", bp_sum))
   # Final conditional CFLP
   merged_raster <- cflp_sum / bp_sum
-  # Eliminate introduced bp zeros
-  #merged_raster[bp_sum <= 0] <- NA
   # Output filename
   output_filename <- paste0(
     merged_dir, "/okawen_", opt$run_timepoint, "_", opt$scenario, "_",
