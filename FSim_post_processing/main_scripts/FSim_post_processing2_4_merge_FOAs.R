@@ -61,6 +61,7 @@ target_dirs <- list.dirs(path = wd, recursive = FALSE, full.names = TRUE) %>%
 if (length(target_dirs) == 0) {
   stop("No matching directories found for the specified scenario.")
 }
+message(paste0("Target directories for merging: ", target_dirs))
 
 # Patterns to match each burn probability raster
 patterns <- c(
@@ -75,7 +76,7 @@ patterns <- c(
 
 # Process each pattern
 for (pattern in patterns) {
-  message(paste("Processing pattern:", pattern))
+  message(paste0("Processing pattern:", pattern))
   
   # Collect all rasters matching the pattern from the target directories
   matched_files <- unlist(lapply(target_dirs, function(dir) {
@@ -111,7 +112,7 @@ for (pattern in patterns) {
     # CFLP raster
     cflp <- raster(file)
     # Corresponding BP raster
-    bp_file <- sub("cflp_.*", "bp", file)
+    bp_file <- sub("_cflp_[^/]+\\.tif$", "_bp.tif", file)
     if (!file.exists(bp_file)) {
       stop(paste("Missing BP raster for:", file))
     }
@@ -164,3 +165,4 @@ for (pattern in patterns) {
               overwrite = TRUE)
   message(paste("BP-weighted CFLP raster saved to:", output_filename))
 }}
+
