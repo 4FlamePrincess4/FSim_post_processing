@@ -1,7 +1,6 @@
 library(tidyverse)
 library(sf)
 library(sp)
-library(raster)
 library(terra)
 library(tidyterra)
 library(RSQLite)
@@ -281,4 +280,5 @@ for (i in seq_along(point_dbs)) {
 out_gdb <-  paste0("./ignitions_all_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".gdb")
 writeVector(pts_vector_all, filename = out_gdb, layer = paste0("ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
               filetype="OpenFileGDB", overwrite=TRUE)
+
 
