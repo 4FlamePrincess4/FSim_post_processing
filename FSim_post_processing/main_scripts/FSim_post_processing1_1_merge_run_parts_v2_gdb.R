@@ -125,7 +125,7 @@ layers <- data.frame(layer_name=c("bp","cflp_0to2","cflp_2to4",
                                   "cflp_4to6","cflp_6to8","cflp_8to12",
                                   "cflp_12plus"),layer_num=1:7)
 # Sanity check
-stopifnot(length(seasons_per_part) == length(alltifs))
+stopifnot(length(seasons_per_part) == length(alltifs_stacks))
 
 # Loop over layers
 for (this_layer in seq_len(nrow(layers))) {
@@ -134,9 +134,9 @@ for (this_layer in seq_len(nrow(layers))) {
   message("Processing layer: ", layer_name)
 
   # Extract this band from each part
-  ptifs <- lapply(seq_along(alltifs), function(i) {
+  ptifs <- lapply(seq_along(alltifs_stacks), function(i) {
     message("  Part ", i)
-    alltifs[[i]][[layer_num]]
+    alltifs_stacks[[i]][[layer_num]]
   })
 
   # Combine into a multilayer SpatRaster
@@ -159,8 +159,8 @@ for (this_layer in seq_len(nrow(layers))) {
   } else {
     # ---- CFLP: BP-conditioned weighted mean ----
     # BP stack (band 1 from each part)
-    bp_stack <- rast(lapply(seq_along(alltifs), function(i) {
-      alltifs[[i]][[1]]
+    bp_stack <- rast(lapply(seq_along(alltifs_stacks), function(i) {
+      alltifs_stacks[[i]][[1]]
     }))
     # Numerator: sum(CFLP × BP × seasons)
     numerator <- sum(ptif_stack * bp_stack * w, na.rm = TRUE)
@@ -280,5 +280,6 @@ for (i in seq_along(point_dbs)) {
 out_gdb <-  paste0("./ignitions_all_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".gdb")
 writeVector(pts_vector_all, filename = out_gdb, layer = paste0("ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
               filetype="OpenFileGDB", overwrite=TRUE)
+
 
 
