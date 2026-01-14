@@ -119,68 +119,60 @@ all_tifs_files <- list.files(path=wd,
                              recursive=F,
                              pattern=".+All.tif$",
                              full.names=T)
-alltifs_stacks <- lapply(all_tifs_files, stack)
+alltifs_stacks <- lapply(all_tifs_files, rast)
 
 #Create a data frame identifying each raster in the All stack and the corresponding band number.
 layers <- data.frame(layer_name=c("bp","cflp_0to2","cflp_2to4",
                                   "cflp_4to6","cflp_6to8","cflp_8to12",
-                                  "cflp_12plus"),layer_num=c(seq(from=1,to=7)))
+                                  "cflp_12plus"),layer_num=1:7)
+# Sanity check
+stopifnot(length(seasons_per_part) == length(alltifs))
 
-#Initialize lists to hold tifs in the for loop
-p_tifs <- list()
-#For each of the rasters in a stack
-for(this_layer in 1:nrow(layers)){
-  #For each stack in the list of stacks
-  for(this_stack in seq_along(alltifs_stacks)){
-    #Isolate the raster layer of interest
-    this_raster <- raster::subset(alltifs_stacks[[this_stack]], layers$layer_num[this_layer])
-    #Print indicator
-    print(paste0("Processing ",layers$layer_name[this_layer]," of part ",
-                 this_stack,"..."))
-    #Assign the raster to a variable with a name unique to the raster layer and stack,
-    # and make it a list item.
-    p_tif <- list(assign(paste0(layers$layer_name[this_layer],"_",this_stack), this_raster))
-    #Append the list item to a list of rasters
-    p_tifs <- append(p_tifs, p_tif)
-  }
-  #Take the average of all the rasters in the list
-  ptif_stack <- do.call(stack, p_tifs)
-  #Add a catch in case not all rasters are listed
-  stopifnot(length(seasons_per_part) == nlayers(ptif_stack))
-  print("Processing merged raster across run parts...")
+# Loop over layers
+for (this_layer in seq_len(nrow(layers))) {
   layer_name <- layers$layer_name[this_layer]
+  layer_num  <- layers$layer_num[this_layer]
+  message("Processing layer: ", layer_name)
+
+  # Extract this band from each part
+  ptifs <- lapply(seq_along(alltifs), function(i) {
+    message("  Part ", i)
+    alltifs[[i]][[layer_num]]
+  })
+
+  # Combine into a multilayer SpatRaster
+  ptif_stack <- rast(ptifs)
+
+  stopifnot(nlyr(ptif_stack) == length(seasons_per_part))
+
+  # Convert weights to a SpatRaster for safe arithmetic
+  w <- rast(ptif_stack)
+  values(w) <- matrix(
+    rep(seasons_per_part, each = ncell(ptif_stack)),
+    ncol = nlyr(ptif_stack)
+  )
+
   if (layer_name == "bp") {
-   # BP: simple weighted mean
-   mean_p <- raster::weighted.mean(
-     ptif_stack,
-     seasons_per_part,
-     na.rm = TRUE)
+    # ---- Burn Probability: weighted mean ----
+    numerator   <- sum(ptif_stack * w, na.rm = TRUE)
+    denominator <- sum(w, na.rm = TRUE)
+    mean_p      <- numerator / denominator
   } else {
-    # CFLP: BP-conditioned weighted average
-    # BP stack (one layer per part)
-    bp_stack <- stack(lapply(seq_along(alltifs_stacks), function(i) {
-      raster::subset(alltifs_stacks[[i]], 1)
-    }))
-    # Mask CFLP where BP is NA
-    ptif_stack <- raster::mask(ptif_stack, bp_stack)
-    # Expand seasons_per_part to raster layers
-    season_weights <- stack(lapply(seasons_per_part, function(n) {
-      bp_stack[[1]] * n
+    # ---- CFLP: BP-conditioned weighted mean ----
+    # BP stack (band 1 from each part)
+    bp_stack <- rast(lapply(seq_along(alltifs), function(i) {
+      alltifs[[i]][[1]]
     }))
     # Numerator: sum(CFLP × BP × seasons)
-    numerator <- sum(ptif_stack * bp_stack * season_weights, na.rm = TRUE)
+    numerator <- sum(ptif_stack * bp_stack * w, na.rm = TRUE)
     # Denominator: sum(BP × seasons)
-    denominator <- sum(bp_stack * season_weights, na.rm = TRUE)
-    # Final CFLP
+    denominator <- sum(bp_stack * w, na.rm = TRUE)
     mean_p <- numerator / denominator
-    }
-  #Plot the averaged raster
-  #plot(mean_p)+title(paste0(opt$foa_run,"_",opt$scenario, "_", opt$run_timepoint,"_FullRun_",layers$layer_name[this_layer]))
-  #Write the averaged raster to the working directory
-  writeRaster(mean_p,paste0(opt$foa_run,"_",opt$scenario, "_", opt$run_timepoint,"_FullRun_",layers$layer_name[this_layer]),
-              format="GTiff", overwrite=TRUE)
-  #Re-initialize the p_tifs list
-  p_tifs <- list()
+  }
+
+  # Write output
+  out_name <- paste0(opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, "_FullRun_", layer_name, ".tif")
+  writeRaster(mean_p, out_name, overwrite = TRUE)
 }
 
 #STEP 4: Export perimeters for all fires (keep separate by part)
@@ -289,3 +281,4 @@ for (i in seq_along(point_dbs)) {
 out_gdb <-  paste0("./ignitions_all_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint, ".gdb")
 writeVector(pts_vector_all, filename = out_gdb, layer = paste0("ignitions_", opt$foa_run, "_", opt$scenario, "_", opt$run_timepoint),
               filetype="OpenFileGDB", overwrite=TRUE)
+
